@@ -1,0 +1,231 @@
+================================================================================
+  EDUKA — RELATÓRIO DE ANÁLISE E PLANO DE MELHORIA
+  Data: 2026-07-08
+  Projecto: Eduka — Plataforma Académica com IA (Angola)
+================================================================================
+
+1. VISÃO GERAL DO PROJECTO
+--------------------------------------------------------------------------------
+Plataforma educacional com IA para estudantes angolanos.
+Stack: Next.js 15 + React 19 RC + Supabase + Gemini/Groq
+Ferramentas: Gerador de Trabalhos, Melhorador de Texto, Explicação Simples,
+             Plano de Estudo, Gerador de Slides
+Exportação: DOCX, PDF, TXT, Markdown, PPTX
+
+2. BUGS ENCONTRADOS
+--------------------------------------------------------------------------------
+
+=== CRÍTICOS ===
+
+[BUG-01] learning-system.js:1-9
+  Severidade: CRÍTICO
+  Problema: Cria cliente Supabase próprio com createClient() em vez de usar
+            o admin client existente em supabase/admin.js. Resulta em duplicação
+            de clientes e potenciais memory leaks em serverless.
+  Correção: Reutilizar createAdminClient() do supabase/admin.js
+
+[BUG-02] ai-provider.js (todas as funções)
+  Severidade: CRÍTICO
+  Problema: Sem timeout em chamadas fetch. Se a API Gemini ou Groq travar,
+            o request fica pendente para sempre, bloqueando o utilizador.
+  Correção: Adicionar AbortController com timeout de 30 segundos
+
+[BUG-03] utils.js:121-152 (exportToPdf)
+  Severidade: CRÍTICO
+  Problema: Usa window.open() + setTimeout(250ms) para impressão. Frágil:
+            - Popup blockers podem bloquear
+            - 250ms pode não ser suficiente para renderizar
+            - Utilizador vê janela de impressão indesejada
+            - Não funciona em mobile
+  Correção: Substituir por pdf-lib para geração PDF directa no browser
+
+=== ALTOS ===
+
+[BUG-04] utils.js:35-66 (markdownToHtml)
+  Severidade: ALTO
+  Problema: Parser markdown manual incompleto. Não suporta:
+            - Listas numeradas (1. 2. 3.)
+            - Code blocks (``` ... ```)
+            - Imagens (![alt](url))
+            - Links com atributos
+            - Blockquotes (> texto)
+            - Tabelas
+  Correção: Usar biblioteca 'marked' para parsing robusto
+
+[BUG-05] utils.js:157-218 (exportToDocx)
+  Severidade: ALTO
+  Problema: Geração DOCX extremamente básica:
+            - Sem formatação de página (A4, margens)
+            - Sem página de capa
+            - Sem cabeçalhos/rodapés
+            - Sem listas numeradas
+            - Sem blockquotes ou code blocks
+            - Sem imagens ou tabelas
+  Correção: Expandir com formatação profissional completa
+
+[BUG-06] utils.js:107-116 (exportToTxt)
+  Severidade: ALTO
+  Problema: Regex .replace(/_ /g, '') não remove marcadores markdown
+            correctamente. Itálicos *texto* não são removidos.
+  Correção: Corrigir regex para remover todos os marcadores
+
+[BUG-07] api/slides/route.js:26-38
+  Severidade: ALTO
+  Problema: Prompt construído inline em vez de usar buildXxxPrompt()
+            como os outros routes. Inconsistente e difícil de manter.
+  Correção: Criar buildSlidesPrompt() em prompts.js
+
+[BUG-08] api/estudo/route.js:27-37
+  Severidade: ALTO
+  Problema: Mesmo problema que BUG-07 — prompt inline.
+  Correção: Criar buildStudyPrompt() em prompts.js
+
+=== MÉDIOS ===
+
+[BUG-09] ExportMenu.js:77
+  Severidade: MÉDIO
+  Problema: Template string dinâmica no style jsx com ${isOpen ? ...}
+            pode causar hydration mismatch entre servidor e cliente.
+  Correção: Usar variável CSS ou classe condicional
+
+[BUG-10] ferramentas/estudo/page.js:180
+  Severidade: MÉDIO
+  Problema: Usa class "rendered-markdown" que não existe no CSS.
+  Correção: Remover class ou adicionar no globals.css
+
+[BUG-11] ferramentas/slides/page.js
+  Severidade: MÉDIO
+  Problema: Não importa Navbar/Footer — inconsistente com trabalho/melhorar/explicar
+  Correção: Adicionar Navbar e Footer para consistência
+
+[BUG-12] ferramentas/estudo/page.js
+  Severidade: MÉDIO
+  Problema: Importa Navbar e Footer mas não os usa no JSX (usa layout próprio)
+  Correção: Unificar padrão com as outras páginas
+
+[BUG-13] Todas as API routes
+  Severidade: MÉDIO
+  Problema: Sem rate limiting — vulnerável a abuso de API
+  Correção: Adicionar rate limiting básico (NOTA: não implementar agora,
+            apenas documentar como melhoria futura)
+
+=== BAIXOS ===
+
+[BUG-14] utils.js:21-29 (sanitizeInput)
+  Severidade: BAIXO
+  Problema: Remove code blocks do input do utilizador, o que pode remover
+            conteúdo legítimo. O regex /```[\s\S]*?```/ é muito agressivo.
+  Correção: Ajustar para preservar conteúdo válido
+
+[BUG-15] ai-provider.js:78,82
+  Severidade: BAIXO
+  Problema: console.warn e console.error em código de produção.
+  Correção: Manter apenas para debug, considerar remover em produção
+
+3. ANÁLISE DE QUALIDADE DOS DOCUMENTOS
+--------------------------------------------------------------------------------
+
+=== DOCX (exportToDocx) ===
+Estado: MUITO BÁSICO — nota 3/10
+- Sem formatação de página
+- Sem capa
+- Sem estilos tipográficos
+- Parsing markdown incompleto
+- Sem cabeçalhos/rodapés
+
+Plano de melhoria:
++ Formatação A4 com margens de 2.5cm
++ Página de capa com título, autor, data
++ Tipografia: Calibri para corpo, títulos com cores Eduka
++ Listas numeradas e com marcadores
++ Blockquotes com barra lateral
++ Code blocks com fundo cinza e fonte monospace
++ Links clicáveis
++ Horizontal rules
++ Cabeçalho com título do documento
++ Rodapé com número de página
+
+=== PDF (exportToPdf) ===
+Estado: FRÁGIL — nota 2/10
+- Usa window.open() + print — muito instável
+- Sem controlo de layout
+- Sem estilos profissionais
+- Não funciona em mobile
+
+Plano de melhoria:
++ Substituir por pdf-lib para geração directa
++ Layout A4 profissional
++ Formatação tipográfica consistente
++ Sem dependência de popup/print
+
+=== PPTX (slides-generator.js) ===
+Estado: BÁSICO — nota 4/10
+- Apenas 2 tipos de slide (título e conteúdo)
+- Template escuro simples
+- Sem branding consistente
+- Sem speaker notes
+- Sem layouts variados
+
+Plano de melhoria:
++ Múltiplos layouts: cover, conteúdo, duas colunas, section divider, conclusão
++ Branding Eduka: logo, cores, tipografia
++ Speaker notes para cada slide
++ Barra de progresso
++ Números de slide
++ Melhor prompt da IA para conteúdo mais rico
+
+4. BIBLIOTECAS OPEN SOURCE RECOMENDADAS
+--------------------------------------------------------------------------------
+
+| Biblioteca | Tamanho | Uso                          | Justificação                           |
+|-----------|---------|------------------------------|---------------------------------------|
+| marked    | ~30KB   | Parser markdown              | Substitui 30+ linhas de regex frágeis |
+| pdf-lib   | ~500KB  | Geração PDF                  | Substitui window.print, fiável        |
+
+Porquê estas:
+- marked: parser markdown mais leve e rápido do ecossistema JS
+- pdf-lib: geração PDF 100% client-side, sem dependências externas
+
+O que NÃO adicionar:
+- puppeteer/playwright: pesados, desnecessários
+- html2pdf.js: depende de html2canvas, pesado
+- jspdf: mais pesado que pdf-lib
+
+5. O QUE NÃO ALTERAR (para não quebrar nada)
+--------------------------------------------------------------------------------
+
+- Estrutura de pastas do projecto
+- Sistema de autenticação Supabase
+- Middleware de autenticação
+- Componentes de UI existentes (Navbar, Footer, Hero, etc.)
+- Sistema de temas (dark/light)
+- Estrutura de API routes existente
+- Funcionalidade de cópia para clipboard
+- Sistema de aprendizagem (learning-system) — apenas corrigir cliente
+- Layout geral das páginas
+
+6. PLANO DE EXECUÇÃO
+--------------------------------------------------------------------------------
+
+Passo 1: Criar conversa.txt (ESTE FICHEIRO)
+Passo 2: Corrigir bugs críticos
+  - ai-provider.js: adicionar timeout 30s
+  - learning-system.js: reutilizar admin client
+  - prompts.js: criar buildSlidesPrompt() e buildStudyPrompt()
+Passo 3: Instalar marked e pdf-lib
+Passo 4: Melhorar exportToDocx
+Passo 5: Melhorar slides-generator.js
+Passo 6: Melhorar exportToPdf
+Passo 7: Corrigir bugs médios/baixos
+Passo 8: Unificar Navbar/Footer
+
+7. NOTA SOBRE O .env
+--------------------------------------------------------------------------------
+
+O ficheiro .env.local contém chaves de API (Gemini, Groq, Supabase).
+Estas são ignoradas nesta análise pois o projecto corre localmente.
+Em produção, garantir que .env.local está no .gitignore.
+
+================================================================================
+  FIM DO RELATÓRIO
+================================================================================
