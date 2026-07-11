@@ -12,6 +12,12 @@ const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const API_TIMEOUT_MS = 45000;
 
+export const DEFAULT_MODELS = {
+  openrouter: "meta-llama/llama-3.3-70b-instruct:free",
+  groq: "llama-3.3-70b-versatile",
+  nvidia: "nvidia/nemotron-3-super-120b-a12b",
+  gemini: "gemini-2.0-flash",
+};
 // ─── Helpers ──────────────────────────────────────────────────
 
 function buildGeminiContents(prompt, images) {
@@ -193,7 +199,7 @@ export async function callGroqMessages(messages, options = {}) {
 
 async function callGroq(prompt, options = {}) {
   return callGroqMessages([{ role: "user", content: prompt }], {
-    model: options.model || "llama-3.3-70b-versatile",
+    model: options.model || DEFAULT_MODELS.groq,
     system: options.system,
     temperature: options.temperature,
     maxTokens: options.maxTokens,
@@ -251,7 +257,7 @@ export async function callOpenRouterMessages(messages, options = {}) {
 
 async function callOpenRouter(prompt, options = {}) {
   return callOpenRouterMessages([{ role: "user", content: prompt }], {
-    model: options.model || "meta-llama/llama-3.3-70b-instruct:free",
+    model: options.model || DEFAULT_MODELS.openrouter,
     system: options.system,
     temperature: options.temperature,
     maxTokens: options.maxTokens,
@@ -380,7 +386,7 @@ export async function callNvidiaMessages(messages, options = {}) {
 
 async function callNvidia(prompt, options = {}) {
   return callNvidiaMessages([{ role: "user", content: prompt }], {
-    model: options.model || "nvidia/nemotron-3-super-120b-a12b",
+    model: options.model || DEFAULT_MODELS.nvidia,
     system: options.system,
     temperature: options.temperature,
     maxTokens: options.maxTokens,
@@ -415,7 +421,7 @@ async function tryWithFallback(fns, names) {
     try {
       return await fns[i]();
     } catch (err) {
-      console.warn("[AI Provider] ${names[i]} falhou:", err.message);
+      console.warn(`[AI Provider] ${names[i]} falhou:`, err.message);
       if (i === fns.length - 1) {
         throw new Error(
           "Todos os provedores de IA estao indisponiveis. Tenta novamente em alguns minutos."
@@ -431,19 +437,32 @@ async function tryWithFallback(fns, names) {
 export async function generateContent(prompt, options = {}) {
   const { provider = "openrouter" } = options;
 
-  const providers = {
-    openrouter: { fn: () => callOpenRouter(prompt, options), name: "OpenRouter" },
-    groq: { fn: () => callGroq(prompt, { ...options, model: options.model || "llama-3.3-70b-versatile" }), name: "Groq" },
-    nvidia: { fn: () => callNvidia(prompt, options), name: "NVIDIA" },
-    gemini: { fn: () => callGemini(prompt, options), name: "Gemini" },
+  const providersConfig = {
+    openrouter: { fn: (opts) => callOpenRouter(prompt, opts), name: "OpenRouter", id: "openrouter" },
+    groq: { fn: (opts) => callGroq(prompt, opts), name: "Groq", id: "groq" },
+    nvidia: { fn: (opts) => callNvidia(prompt, opts), name: "NVIDIA", id: "nvidia" },
+    gemini: { fn: (opts) => callGemini(prompt, opts), name: "Gemini", id: "gemini" },
   };
 
   const order = ["openrouter", "groq", "nvidia", "gemini"];
-  const selected = providers[provider] || providers.openrouter;
-  const rest = order.filter((p) => p !== provider);
+  const selectedConfig = providersConfig[provider] || providersConfig.openrouter;
+  const restConfig = order.filter((p) => p !== selectedConfig.id);
 
-  const fns = [selected.fn, ...rest.map((p) => providers[p].fn)];
-  const names = [selected.name, ...rest.map((p) => providers[p].name)];
+  const fallbackChain = [selectedConfig, ...restConfig.map(p => providersConfig[p])];
+  const fns = [];
+  const names = [];
+
+  for (const p of fallbackChain) {
+    names.push(p.name);
+    fns.push(() => {
+      // Usar options.model se for o provider original, caso contrario usa o default
+      const useModel = (p.id === selectedConfig.id && options.model)
+        ? options.model
+        : DEFAULT_MODELS[p.id];
+        
+      return p.fn({ ...options, model: useModel });
+    });
+  }
 
   return tryWithFallback(fns, names);
 }

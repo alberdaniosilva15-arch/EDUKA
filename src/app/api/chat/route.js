@@ -148,10 +148,8 @@ export async function POST(request) {
         maxTokens: 4096,
       });
     } else if (data.model.includes("gemini")) {
-      const { generateContent } = await import("@/lib/ai-provider");
-      const lastUserMsg = messages[messages.length - 1]?.content || "";
-      content = await generateContent(lastUserMsg, {
-        provider: "gemini",
+      content = await callGeminiVision(messages, [], {
+        model: data.model,
         system: CHAT_SYSTEM_PROMPT,
         temperature: 0.72,
         maxTokens: 4096,

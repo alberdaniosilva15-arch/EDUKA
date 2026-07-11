@@ -31,7 +31,6 @@ export function sanitizeHtml(html) {
 export function sanitizeInput(input) {
   if (typeof input !== 'string') return input;
   return input
-    .replace(/[<>]/g, '')           // Remove HTML brackets
     .replace(/\n{3,}/g, '\n\n')     // Limita quebras de linha consecutivas
     .trim()
     .slice(0, 5000);                // Limita tamanho máximo

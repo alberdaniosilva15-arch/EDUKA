@@ -75,7 +75,7 @@ function buildGeminiRequest(textPrompt, base64Images) {
     contents: [{ parts }],
     generationConfig: {
       temperature: 0.4,
-      maxOutputTokens: 16384,
+      maxOutputTokens: 8192,
       topP: 0.95,
     },
   };
@@ -114,35 +114,55 @@ export async function POST(request) {
     let responseText;
     if (images && images.length > 0) {
       const body = buildGeminiRequest(prompt, images);
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
       
-      try {
-        const res = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: controller.signal,
-          body: JSON.stringify(body),
-        });
+      let attempt = 0;
+      const MAX_RETRIES = 1;
+      while (attempt <= MAX_RETRIES) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+        try {
+          const res = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: controller.signal,
+            body: JSON.stringify(body),
+          });
 
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(`Gemini error ${res.status}: ${errorText}`);
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(`Gemini error ${res.status}: ${errorText}`);
+          }
+
+          const data = await res.json();
+          responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          break;
+        } catch (err) {
+          if (attempt === MAX_RETRIES) throw err;
+          console.warn(`[API /pdf] Falha na tentativa ${attempt + 1}: ${err.message}. Retentando...`);
+          attempt++;
+        } finally {
+          clearTimeout(timeoutId);
         }
-
-        const data = await res.json();
-        responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      } finally {
-        clearTimeout(timeoutId);
       }
     } else {
-      // Apenas texto - usa o provider normal
+      // Apenas texto - usa o provider central (ja tem fallback automatico)
       const { generateContent } = await import("@/lib/ai-provider");
-      responseText = await generateContent(prompt, {
-        provider: "gemini",
-        temperature: 0.4,
-        maxTokens: 16384,
-      });
+      let attempt = 0;
+      const MAX_RETRIES = 1;
+      while (attempt <= MAX_RETRIES) {
+        try {
+          responseText = await generateContent(prompt, {
+            provider: "gemini",
+            temperature: 0.4,
+            maxTokens: 8192,
+          });
+          break;
+        } catch (err) {
+          if (attempt === MAX_RETRIES) throw err;
+          console.warn(`[API /pdf] Texto falhou tentativa ${attempt + 1}. Retentando...`);
+          attempt++;
+        }
+      }
     }
 
     // Extrair titulo do resultado

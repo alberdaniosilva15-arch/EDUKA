@@ -309,12 +309,12 @@ a {
 .btn-secondary {
   background: transparent;
   color: var(--text-main);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--glass-border);
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.35);
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
   transform: translateY(-2px);
 }
 
@@ -356,7 +356,7 @@ a {
 .form-label {
   font-weight: 600;
   font-size: var(--fs-sm);
-  color: var(--slate-300);
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -366,8 +366,8 @@ a {
 .form-textarea {
   width: 100%;
   padding: var(--space-3) var(--space-4);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   color: var(--text-main);
   font-family: var(--font-body);
@@ -403,7 +403,7 @@ a {
 }
 
 .form-select option {
-  background: var(--slate-800);
+  background: var(--bg-main);
   color: var(--text-main);
 }
 
@@ -561,10 +561,10 @@ a {
 }
 
 .navbar.scrolled {
-  background: rgba(15, 23, 42, 0.85);
+  background: var(--glass-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-bottom: var(--border-glass);
+  border-bottom: 1px solid var(--glass-border);
 }
 
 .navbar-inner {
@@ -725,7 +725,7 @@ a {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  color: var(--white);
+  color: var(--text-main);
   opacity: 0.7;
 }
 
@@ -1305,7 +1305,7 @@ a {
   margin: 0 auto var(--space-6);
   position: relative;
   z-index: 2;
-  background: var(--slate-900);
+  background: var(--glass-bg);
   border: 2px solid var(--blue-500);
   color: var(--blue-400);
 }
@@ -1414,7 +1414,7 @@ a {
 .footer {
   padding: var(--space-16) 0 var(--space-8);
   border-top: var(--border-glass);
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--glass-bg);
 }
 
 .footer-grid {
@@ -1792,7 +1792,7 @@ a {
   align-items: center;
   justify-content: center;
   padding: calc(var(--nav-height) + var(--space-8)) var(--space-6) var(--space-16);
-  background-color: var(--slate-950);
+  background-color: var(--bg-main);
   background-image: 
     radial-gradient(circle at 15% 50%, rgba(37, 99, 235, 0.35) 0%, transparent 40%),
     radial-gradient(circle at 85% 30%, rgba(6, 182, 212, 0.35) 0%, transparent 40%),
@@ -2175,4 +2175,24 @@ a {
     font-size: var(--fs-xs);
     padding: 0.3rem 0.6rem;
   }
+}
+
+/* === Light Mode iOS Glass Overrides === */
+[data-theme='light'] .ios-glass-badge {
+  background: rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  color: var(--text-main) !important;
+}
+[data-theme='light'] .ios-glass-text-block {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-main);
+}
+[data-theme='light'] .ios-glass-desc {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-muted) !important;
+}
+[data-theme='light'] .ios-glass-btn-primary {
+  background: rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+  color: var(--text-main) !important;
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { GROQ_FREE_MODELS, DEFAULT_GROQ_CHAT_MODEL, getGroqChatModel } from "@/lib/groq-models";
+import { FREE_MODELS } from "@/lib/free-models";
 
 const STORAGE_KEY = "eduka-chat-conversations-v1";
 
@@ -37,7 +37,7 @@ export default function ChatPage() {
   const [conversations, setConversations] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [input, setInput] = useState("");
-  const [model, setModel] = useState(DEFAULT_GROQ_CHAT_MODEL);
+  const [model, setModel] = useState(FREE_MODELS[0].id);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [attachedFiles, setAttachedFiles] = useState([]);
@@ -71,7 +71,11 @@ export default function ChatPage() {
   );
 
   const activeMessages = activeConversation?.messages || [];
-  const selectedModel = getGroqChatModel(model);
+  const selectedModel = FREE_MODELS.find(m => m.id === model) || FREE_MODELS[0];
+  const modelDescription = selectedModel.speed === "rapido" 
+    ? "Rapido para duvidas curtas, resumos e estudo diario." 
+    : "Mais forte para explicacoes, trabalhos e raciocinio longo.";
+  const fullDescription = selectedModel.vision ? `${modelDescription} Suporta analise visual.` : modelDescription;
 
   function upsertConversation(nextConversation) {
     setConversations((current) => {
@@ -262,12 +266,12 @@ export default function ChatPage() {
             className="model-select"
             value={model}
             onChange={(event) => setModel(event.target.value)}
-            aria-label="Escolher modelo Groq"
+            aria-label="Escolher modelo"
           >
-            {GROQ_FREE_MODELS.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.shortName}
-              </option>
+            {FREE_MODELS.map((item) => (
+               <option key={item.id} value={item.id}>
+                 {item.name} {item.vision ? "👁️" : ""}
+               </option>
             ))}
           </select>
         </header>
@@ -277,7 +281,7 @@ export default function ChatPage() {
             <div className="empty-chat">
               <img src="/eduka-logo.png" alt="Eduka" className="eduka-logo-center" />
               <h1>{getGreeting()}, como estudamos hoje?</h1>
-              <p>{selectedModel.description}</p>
+              <p>{fullDescription}</p>
             </div>
           ) : (
             <div className="messages">
@@ -313,7 +317,7 @@ export default function ChatPage() {
                   <div className="message-avatar">IA</div>
                   <div className="message-bubble thinking">
                     <span></span><span></span><span></span>
-                    A pensar com {selectedModel.shortName}
+                    A pensar com {selectedModel.name}
                   </div>
                 </article>
               )}
@@ -372,7 +376,7 @@ export default function ChatPage() {
               />
             </div>
             <div className="composer-actions">
-              <span className="model-caption">{selectedModel.shortName}</span>
+              <span className="model-caption">{selectedModel.name} {selectedModel.vision ? "(Visao Inclusa)" : ""}</span>
               <button type="submit" disabled={(!input.trim() && attachedFiles.length === 0) || loading} aria-label="Enviar mensagem">
                 Enviar
               </button>
@@ -393,14 +397,14 @@ export default function ChatPage() {
           min-height: 100vh;
           display: grid;
           grid-template-columns: 304px minmax(0, 1fr);
-          background: #181818;
-          color: #f4f1e8;
+          background: var(--bg-main);
+          color: var(--text-main);
           overflow: hidden;
         }
         .chat-sidebar {
           height: 100vh;
-          border-right: 1px solid rgba(255, 255, 255, 0.1);
-          background: #222222;
+          border-right: 1px solid var(--glass-border);
+          background: var(--glass-bg);
           display: flex;
           flex-direction: column;
           padding: 18px 14px;
@@ -418,7 +422,7 @@ export default function ChatPage() {
           font-family: var(--font-heading);
           font-size: 24px;
           font-weight: 800;
-          color: #f7f3ea;
+          color: var(--text-main);
         }
         .logo-img {
           width: 34px;
@@ -462,8 +466,8 @@ export default function ChatPage() {
           width: 34px;
           height: 34px;
           border-radius: 50%;
-          background: rgba(255, 255, 255, 0.08);
-          color: #f8f0d7;
+          background: var(--glass-bg);
+          color: var(--text-main);
           font-size: 24px;
         }
         .new-chat {
@@ -474,14 +478,14 @@ export default function ChatPage() {
           padding: 0 12px;
           border-radius: 10px;
           background: transparent;
-          color: #f8e6b8;
+          color: var(--text-main);
           text-align: left;
           font-weight: 700;
         }
         .new-chat:hover,
         .chat-nav a:hover,
         .conversation-item:hover {
-          background: rgba(255, 255, 255, 0.08);
+          background: var(--glass-bg);
         }
         .chat-nav {
           display: grid;
@@ -490,7 +494,7 @@ export default function ChatPage() {
         .chat-nav a {
           padding: 10px 12px;
           border-radius: 10px;
-          color: #f0e6d1;
+          color: var(--text-main);
           font-weight: 600;
         }
         .chat-nav a.active {
@@ -500,7 +504,7 @@ export default function ChatPage() {
         .recent-heading {
           margin-top: 8px;
           font-size: 13px;
-          color: #b8ae9e;
+          color: var(--text-muted);
         }
         .conversation-list {
           min-height: 0;
@@ -514,7 +518,7 @@ export default function ChatPage() {
           min-height: 38px;
           padding: 8px 10px;
           border-radius: 9px;
-          color: #efe6d4;
+          color: var(--text-main);
           background: transparent;
           text-align: left;
           white-space: nowrap;
@@ -522,17 +526,17 @@ export default function ChatPage() {
           text-overflow: ellipsis;
         }
         .conversation-item.selected {
-          background: rgba(255, 255, 255, 0.12);
+          background: var(--glass-bg);
         }
         .empty-recent {
-          color: #8f877d;
+          color: var(--text-muted);
           font-size: 13px;
           padding: 0 8px;
         }
         .sidebar-account {
           margin-top: auto;
           padding-top: 14px;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          border-top: 1px solid var(--glass-border);
           display: flex;
           align-items: center;
           gap: 12px;
@@ -556,7 +560,7 @@ export default function ChatPage() {
           line-height: 1.25;
         }
         .sidebar-account span:last-child {
-          color: #a59d92;
+          color: var(--text-muted);
           font-size: 13px;
         }
         .chat-main {
@@ -575,25 +579,25 @@ export default function ChatPage() {
         }
         .back-panel {
           width: fit-content;
-          color: #b7afa2;
+          color: var(--text-muted);
           font-size: 14px;
         }
         .plan-pill {
           justify-self: center;
           padding: 8px 12px;
           border-radius: 10px;
-          background: #101010;
-          color: #d9d2c6;
+          background: var(--glass-bg);
+          color: var(--text-muted);
           font-size: 14px;
         }
         .model-select {
           justify-self: end;
           min-width: 172px;
           height: 38px;
-          border: 1px solid rgba(255, 255, 255, 0.12);
+          border: 1px solid var(--glass-border);
           border-radius: 10px;
-          background: #242424;
-          color: #f5efdf;
+          background: var(--glass-bg);
+          color: var(--text-main);
           padding: 0 10px;
           outline: none;
         }
@@ -614,14 +618,14 @@ export default function ChatPage() {
         .empty-chat h1 {
           font-size: clamp(32px, 4vw, 56px);
           font-weight: 500;
-          color: #d9d4ca;
+          color: var(--text-main);
           margin: 0;
           overflow-wrap: anywhere;
         }
         .empty-chat p {
           max-width: 520px;
           margin-top: 10px;
-          color: #999187;
+          color: var(--text-muted);
         }
         .messages {
           width: min(900px, 100%);
@@ -646,7 +650,7 @@ export default function ChatPage() {
         .message.user .message-bubble {
           grid-column: 1;
           justify-self: end;
-          background: #2f2f2f;
+          background: var(--glass-bg);
         }
         .message-avatar {
           width: 38px;
@@ -658,18 +662,18 @@ export default function ChatPage() {
           max-width: 760px;
           padding: 16px 18px;
           border-radius: 18px;
-          background: #242424;
-          color: #f7f1e8;
+          background: var(--glass-bg);
+          color: var(--text-main);
           white-space: pre-wrap;
           overflow-wrap: anywhere;
           line-height: 1.68;
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          border: 1px solid var(--glass-border);
         }
         .thinking {
           display: inline-flex;
           align-items: center;
           gap: 8px;
-          color: #c8c0b2;
+          color: var(--text-muted);
         }
         .thinking span {
           width: 6px;
@@ -702,14 +706,14 @@ export default function ChatPage() {
           gap: 8px;
           margin-bottom: 10px;
           padding: 8px 12px;
-          background: rgba(255, 255, 255, 0.04);
+          background: var(--glass-bg);
           border-radius: 12px;
         }
         .attached-file-chip {
           display: flex;
           align-items: center;
           gap: 6px;
-          background: #343434;
+          background: var(--glass-bg);
           padding: 6px 10px;
           border-radius: 8px;
           font-size: 13px;
@@ -719,7 +723,7 @@ export default function ChatPage() {
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
-          color: #f0e6d1;
+          color: var(--text-main);
         }
         .attached-remove {
           background: none;
@@ -732,11 +736,11 @@ export default function ChatPage() {
         }
         .composer {
           min-height: 118px;
-          background: #2b2b2a;
-          border: 1px solid rgba(255, 255, 255, 0.12);
+          background: var(--glass-bg);
+          border: 1px solid var(--glass-border);
           border-radius: 26px;
           padding: 18px;
-          box-shadow: 0 18px 60px rgba(0, 0, 0, 0.25);
+          box-shadow: var(--shadow-lg);
         }
         .composer-input-row {
           display: flex;
@@ -764,13 +768,13 @@ export default function ChatPage() {
           border: 0;
           outline: 0;
           background: transparent;
-          color: #f8f1e5;
+          color: var(--text-main);
           font: inherit;
           font-size: 17px;
           line-height: 1.55;
         }
         .composer textarea::placeholder {
-          color: #8f887d;
+          color: var(--text-muted);
         }
         .composer-actions {
           display: flex;
@@ -780,7 +784,7 @@ export default function ChatPage() {
           margin-top: 12px;
         }
         .model-caption {
-          color: #b7afa2;
+          color: var(--text-muted);
           font-size: 13px;
         }
         .composer button {
@@ -805,12 +809,12 @@ export default function ChatPage() {
           min-height: 34px;
           padding: 0 14px;
           border-radius: 10px;
-          background: #343434;
-          color: #f2eadc;
+          background: var(--glass-bg);
+          color: var(--text-main);
           font-weight: 700;
         }
         .quick-prompts button:hover {
-          background: #3f3f3f;
+          background: var(--glass-border);
         }
         /* Image/file in messages */
         :global(.message-image) {

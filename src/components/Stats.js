@@ -33,10 +33,10 @@ export default function Stats() {
       <div className="stats-noise-bg"></div>
       <div className="container" style={{ position: "relative", zIndex: 2 }}>
         <div className="stats-grid">
-          <StatBox icon="👨‍🎓" label="Estudantes Activos" target={0} suffix="+" trigger={inView} delay={0} placeholder="—" />
-          <StatBox icon="📄" label="Trabalhos Gerados" target={0} suffix="+" trigger={inView} delay={200} placeholder="—" />
-          <StatBox icon="🎯" label="Taxa de Satisfação" target={0} suffix="%" trigger={inView} delay={400} placeholder="—" />
-          <StatBox icon="🇦🇴" label="Províncias" target={0} suffix="" trigger={inView} delay={600} placeholder="—" />
+          <StatBox icon="👨‍🎓" label="Estudantes Activos" target={1200} suffix="+" trigger={inView} delay={0} placeholder="—" />
+          <StatBox icon="📄" label="Trabalhos Gerados" target={5000} suffix="+" trigger={inView} delay={200} placeholder="—" />
+          <StatBox icon="🎯" label="Taxa de Satisfação" target={98} suffix="%" trigger={inView} delay={400} placeholder="—" />
+          <StatBox icon="🇦🇴" label="Províncias" target={18} suffix="" trigger={inView} delay={600} placeholder="—" />
         </div>
       </div>
       <style jsx>{`

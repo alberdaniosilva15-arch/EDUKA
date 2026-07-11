@@ -84,7 +84,7 @@ export default function Pricing() {
           transition: color 0.3s;
         }
         .pricing-toggle span.active {
-          color: var(--white);
+          color: var(--text-main);
         }
         .toggle-btn {
           width: 60px;
