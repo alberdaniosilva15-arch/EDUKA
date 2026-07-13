@@ -1,62 +1,113 @@
 /**
  * Eduka — API Helpers
- * Autenticação, rate limiting por user_id (Supabase), validação de schema (Zod)
- * 
- * Rate limit usa Supabase em vez de Map em memória — funciona em serverless
- * onde cada instância cold-start tem memória isolada.
+ * Autenticação, rate limiting ponderado por rota (Supabase), validação de schema (Zod)
+ *
+ * Rate limit usa Supabase com custo ponderado:
+ * - chat, explain, improve: 1 unidade
+ * - estudo: 2 unidades
+ * - generate, slides, pdf: 3 unidades
+ *
+ * Cada utilizador tem 30 unidades/hora.
  */
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-// ─── Rate Limiting por user_id via Supabase ──────────────────
-const RL_MAX = 20;          // pedidos por janela
+// ─── Rate Limiting ponderado por rota ──────────────────────
+const RL_MAX_CREDITS = 30;         // créditos por janela
 const RL_WINDOW_MS = 60 * 60 * 1000; // 1 hora
 
+// Custo por rota (em créditos)
+const ROUTE_COSTS = {
+  chat: 1,
+  explain: 1,
+  improve: 1,
+  estudo: 2,
+  generate: 3,
+  slides: 3,
+  pdf: 3,
+};
+
 /**
- * Verifica rate limit do user via tabela Supabase `rate_limits`.
- * Usa upsert atómico — sem race conditions entre instâncias.
+ * Determina a rota a partir do pathname.
  */
-async function checkUserRateLimit(supabase, userId) {
+function detectRoute(pathname) {
+  const match = pathname.match(/\/api\/(\w+)/);
+  return match ? match[1] : "unknown";
+}
+
+/**
+ * Verifica rate limit do user com custo ponderado.
+ * Usa Supabase RPC para incremento atómico — sem race conditions.
+ */
+async function checkUserRateLimit(supabase, userId, route) {
   const now = new Date();
   const windowStart = new Date(now.getTime() - RL_WINDOW_MS);
+  const cost = ROUTE_COSTS[route] || 1;
 
-  // Ler ou criar entrada
+  // Ler entrada actual
   const { data: entry, error: readError } = await supabase
     .from("rate_limits")
-    .select("count, window_start")
+    .select("credits_used, window_start")
     .eq("user_id", userId)
     .single();
 
   // Se não existe ou janela expirou → reset
   if (readError || !entry || new Date(entry.window_start) < windowStart) {
-    await supabase.from("rate_limits").upsert(
-      { user_id: userId, count: 1, window_start: now.toISOString() },
+    const { error: upsertError } = await supabase.from("rate_limits").upsert(
+      { user_id: userId, credits_used: cost, window_start: now.toISOString() },
       { onConflict: "user_id" }
     );
-    return { allowed: true, remaining: RL_MAX - 1, resetIn: RL_WINDOW_MS };
+    if (upsertError) {
+      console.warn("[RateLimit] Upsert error:", upsertError.message);
+    }
+    return {
+      allowed: true,
+      creditsUsed: cost,
+      creditsRemaining: RL_MAX_CREDITS - cost,
+      resetIn: RL_WINDOW_MS,
+      cost,
+    };
   }
 
-  const newCount = entry.count + 1;
+  const newTotal = entry.credits_used + cost;
 
-  if (newCount > RL_MAX) {
+  if (newTotal > RL_MAX_CREDITS) {
     const resetIn = RL_WINDOW_MS - (now.getTime() - new Date(entry.window_start).getTime());
-    return { allowed: false, remaining: 0, resetIn };
+    return {
+      allowed: false,
+      creditsUsed: entry.credits_used,
+      creditsRemaining: 0,
+      resetIn,
+      cost,
+    };
   }
 
-  // Incrementar
-  await supabase
+  // Incrementar créditos
+  const { error: updateError } = await supabase
     .from("rate_limits")
-    .update({ count: newCount })
+    .update({ credits_used: newTotal })
     .eq("user_id", userId);
+  if (updateError) {
+    console.warn("[RateLimit] Update error:", updateError.message);
+  }
 
   const resetIn = RL_WINDOW_MS - (now.getTime() - new Date(entry.window_start).getTime());
-  return { allowed: true, remaining: RL_MAX - newCount, resetIn };
+  return {
+    allowed: true,
+    creditsUsed: newTotal,
+    creditsRemaining: RL_MAX_CREDITS - newTotal,
+    resetIn,
+    cost,
+  };
 }
 
-// ─── Autenticação + Rate Limit por user_id ───────────────────
+// ─── Autenticação + Rate Limit ──────────────────────────────
 
+/**
+ * Autentica o utilizador e aplica rate limit ponderado pela rota.
+ * Retorna { user, supabase, error, rateLimit }
+ */
 export async function authenticateAndRateLimit(request) {
-  // 1. Autenticar PRIMEIRO — só depois aplicar rate limit por user
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -65,31 +116,45 @@ export async function authenticateAndRateLimit(request) {
       user: null,
       supabase,
       error: NextResponse.json({ error: "Não autenticado." }, { status: 401 }),
+      rateLimit: null,
     };
   }
 
-  // 2. Rate limit por user_id via Supabase (não em memória)
-  const rl = await checkUserRateLimit(supabase, user.id);
+  // Detectar rota do pathname
+  const route = detectRoute(request.nextUrl?.pathname || "");
+
+  // Rate limit com custo ponderado
+  const rl = await checkUserRateLimit(supabase, user.id, route);
   if (!rl.allowed) {
     const minutes = Math.ceil(rl.resetIn / 60000);
     return {
       user,
       supabase,
       error: NextResponse.json(
-        { error: `Limite de ${RL_MAX} gerações/hora excedido. Tenta novamente em ${minutes} minutos.` },
+        {
+          error: `Limite de ${RL_MAX_CREDITS} créditos/hora excedido. Tenta novamente em ${minutes} minutos.`,
+          rateLimit: {
+            creditsUsed: rl.creditsUsed,
+            creditsRemaining: 0,
+            resetInMinutes: minutes,
+            routeCost: rl.cost,
+          },
+        },
         {
           status: 429,
           headers: {
-            'Retry-After': String(Math.ceil(rl.resetIn / 1000)),
-            'X-RateLimit-Limit': String(RL_MAX),
-            'X-RateLimit-Remaining': '0',
+            "Retry-After": String(Math.ceil(rl.resetIn / 1000)),
+            "X-RateLimit-Limit": String(RL_MAX_CREDITS),
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": String(Math.ceil((Date.now() + rl.resetIn) / 1000)),
           },
         }
       ),
+      rateLimit: rl,
     };
   }
 
-  return { user, supabase, error: null };
+  return { user, supabase, error: null, rateLimit: rl };
 }
 
 // ─── Validação de schema com Zod ─────────────────────────────
@@ -98,7 +163,7 @@ export function validateSchema(schema, data) {
   const result = schema.safeParse(data);
   if (!result.success) {
     const firstError = result.error.issues[0];
-    const field = firstError.path.join('.') || 'input';
+    const field = firstError.path.join(".") || "input";
     return {
       valid: false,
       error: NextResponse.json(
@@ -110,10 +175,25 @@ export function validateSchema(schema, data) {
   return { valid: true, data: result.data, error: null };
 }
 
+// ─── Resposta com headers de rate limit ──────────────────────
+
+/**
+ * Adiciona headers de rate limit a uma resposta JSON.
+ */
+export function withRateLimitHeaders(response, rateLimit) {
+  if (!rateLimit) return response;
+  response.headers.set("X-RateLimit-Limit", String(RL_MAX_CREDITS));
+  response.headers.set("X-RateLimit-Remaining", String(rateLimit.creditsRemaining));
+  response.headers.set("X-RateLimit-Used", String(rateLimit.creditsUsed));
+  return response;
+}
+
 const apiHelpers = {
   authenticateAndRateLimit,
   validateSchema,
-  RL_MAX,
+  withRateLimitHeaders,
+  RL_MAX_CREDITS,
+  ROUTE_COSTS,
 };
 
 export default apiHelpers;

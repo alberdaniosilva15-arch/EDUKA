@@ -3,6 +3,9 @@
  * Auto-fallback: OpenRouter -> Groq -> Gemini
  * Users can only select FREE models (cost = $0)
  * VISION SUPPORT: Gemini + OpenRouter vision models
+ *
+ * NOTE: New code should import from "@/lib/ai" instead.
+ * This file is maintained for backward compatibility.
  */
 import { DEFAULT_GROQ_CHAT_MODEL } from "@/lib/groq-models";
 
@@ -44,10 +47,8 @@ function buildGeminiContents(prompt, images) {
 }
 
 function buildGeminiMessages(messages, images, system) {
-  // Converte messages array para formato Gemini com imagens no user message
   const geminiContents = [];
 
-  // Se houver system prompt, insere como primeira conversa user/model
   if (system) {
     geminiContents.push({
       role: "user",
@@ -61,7 +62,6 @@ function buildGeminiMessages(messages, images, system) {
 
   for (const msg of messages) {
     if (msg.role === "system") {
-      // System prompt inline no array de mensagens
       geminiContents.push({
         role: "user",
         parts: [{ text: msg.content }],
@@ -72,10 +72,8 @@ function buildGeminiMessages(messages, images, system) {
       });
     } else if (msg.role === "user") {
       const parts = [{ text: msg.content }];
-      // Adiciona imagens apenas na ultima mensagem do user
       if (images && images.length > 0 && msg === messages.filter(m => m.role === "user").pop()) {
         for (const img of images) {
-          // Suporta dois formatos: string base64 (imagens) e objetos inlineData (PDFs)
           if (typeof img === "object" && img.inlineData) {
             parts.push(img);
           } else {
@@ -310,17 +308,12 @@ export async function callOpenRouterVision(messages, images, options = {}) {
     maxTokens = 8192,
   } = options;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
-
-  // Converte formato para OpenRouter com image_url
   const apiMessages = [
     { role: "system", content: system },
   ];
 
   for (const msg of messages) {
     if (msg.role === "user") {
-      // Se for a ultima mensagem do user e temos imagens, adiciona como conteudo multimodal
       const content = [{ type: "text", text: msg.content }];
       
       if (images && images.length > 0 && msg === messages.filter(m => m.role === "user").pop()) {
@@ -336,6 +329,9 @@ export async function callOpenRouterVision(messages, images, options = {}) {
       apiMessages.push({ role: msg.role, content: msg.content });
     }
   }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
   try {
     const res = await fetch(OPENROUTER_API_URL, {
@@ -429,8 +425,6 @@ async function callNvidia(prompt, options = {}) {
 
 /**
  * Envia mensagens com imagens para o modelo adequado
- * Gemini: suporte nativo a imagens/PDF
- * OpenRouter: modelos com :free que suportam visao
  */
 export async function callVision(messages, images, options = {}) {
   const modelId = options.model || "gemini-2.0-flash";
@@ -439,7 +433,6 @@ export async function callVision(messages, images, options = {}) {
     return callGeminiVision(messages, images, options);
   }
 
-  // OpenRouter vision models
   return callOpenRouterVision(messages, images, {
     ...options,
     model: modelId,
@@ -487,7 +480,6 @@ export async function generateContent(prompt, options = {}) {
   for (const p of fallbackChain) {
     names.push(p.name);
     fns.push(() => {
-      // Usar options.model se for o provider original, caso contrario usa o default
       const useModel = (p.id === selectedConfig.id && options.model)
         ? options.model
         : DEFAULT_MODELS[p.id];

@@ -1,93 +1,67 @@
 import { NextResponse } from "next/server";
 import { authenticateAndRateLimit } from "@/lib/api-helpers";
+import { generateContent, callVision } from "@/lib/ai/provider-router";
+import { buildSystemWithPersona } from "@/lib/ai/systems/base";
 
-const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
-const API_TIMEOUT_MS = 60000;
+const PDF_PERSONA = `
+## Persona: Analista de Documentos
+- Analisa PDFs académicos e produz material de estudo estruturado.
+- Extrai conceitos-chave, relações e exercícios.
+- Descreve imagens, tabelas e gráficos quando presentes.
+- Português correcto (variante angolana/portuguesa).
+`.trim();
 
-const SYSTEM_PROMPT = `Es o Eduka PDF Analyzer, um assistente especializado em analisar PDFs academicos.
+const PDF_SYSTEM = buildSystemWithPersona(PDF_PERSONA);
 
-Tua missao: analisar o conteudo dos PDFs enviados e produzir material de estudo estruturado.
-
+const PDF_FORMAT = `
 ## FORMATO DE RESPOSTA (Markdown)
 
-Responde SEMPRE neste formato exato:
+Responde SEMPRE neste formato:
 
-# [Titulo do Conteudo Analisado]
+# [Título do Conteúdo Analisado]
 
 ## Mapa Conceptual
 
 \`\`\`
-[Mapa conceptual em formato de texto com conexoes entre conceitos principais.
- Usa indentacao e simbolos como -> para mostrar relacoes.
- Exemplo:
- Tema Principal
-   ├── Conceito A
-   │   ├── Sub-conceito A1 -> Detalhe importante
-   │   └── Sub-conceito A2 -> Outro detalhe
-   └── Conceito B
-       ├── Sub-conceito B1
-       └── Sub-conceito B2 -> Relacao com Conceito A
-]
+[Tipo: diagrama em texto com conexões entre conceitos principais]
 \`\`\`
 
 ## Resumo Estruturado
 
 ### Conceitos-Chave
-- **Conceito 1**: Explicacao breve e clara
-- **Conceito 2**: Explicacao breve e clara
+- **Conceito 1**: Explicação breve e clara
+- **Conceito 2**: Explicação breve e clara
 
 ### Detalhes Importantes
 - Ponto relevante 1 com contexto
 - Ponto relevante 2 com contexto
 
-### Exercicios Praticos
-1. **Exercicio 1**: Pergunta ou problema para testar compreensao
-2. **Exercicio 2**: Pergunta ou problema para testar compreensao
-3. **Exercicio 3**: Pergunta ou problema para testar compreensao
+### Exercícios Práticos
+1. **Exercício 1**: Pergunta ou problema
+2. **Exercício 2**: Pergunta ou problema
+3. **Exercício 3**: Pergunta ou problema
 
-## Glossario
-- **Termo 1**: Definicao simples
-- **Termo 2**: Definicao simples
+## Glossário
+- **Termo 1**: Definição simples
+- **Termo 2**: Definição simples
 
-## Perguntas para Revisao
+## Perguntas para Revisão
 - Pergunta 1?
 - Pergunta 2?
 - Pergunta 3?
+`.trim();
 
----
-
-Mantem o portugues de Angola/Portugal. Se o PDF tiver imagens, tabelas ou graficos, descreve-os no resumo.`.trim();
-
-function buildGeminiRequest(textPrompt, base64Images) {
-  const parts = [{ text: SYSTEM_PROMPT + "\n\n---\n\n" + textPrompt }];
-  
-  if (base64Images && base64Images.length > 0) {
-    for (const img of base64Images) {
-      const data = img.includes("base64,") ? img.split("base64,")[1] : img;
-      parts.push({
-        inlineData: { mimeType: "image/jpeg", data },
-      });
-    }
-  }
-
-  return {
-    contents: [{ parts }],
-    generationConfig: {
-      temperature: 0.4,
-      maxOutputTokens: 8192,
-      topP: 0.95,
-    },
-  };
-}
+const API_TIMEOUT_MS = 60000;
 
 export async function POST(request) {
+  const startTime = Date.now();
+
   try {
     const { error: authError } = await authenticateAndRateLimit(request);
     if (authError) return authError;
 
     const { text, images, filename } = await request.json();
-    
+
     if (!text && (!images || images.length === 0)) {
       return NextResponse.json(
         { error: "Nenhum conteudo enviado. Envia um PDF ou insere texto." },
@@ -95,84 +69,59 @@ export async function POST(request) {
       );
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "GEMINI_API_KEY nao configurada no servidor." },
-        { status: 500 }
-      );
-    }
-
-    // Construir prompt com o texto extraido
+    // Construir prompt
     let prompt = "";
     if (text) {
       const textPreview = text.slice(0, 30000);
-      prompt = `Analisa o seguinte conteudo extraido do PDF "${filename || "documento"}":\n\n${textPreview}`;
+      prompt = `Analisa o seguinte conteudo extraido do PDF "${filename || "documento"}":\n\n${textPreview}\n\n---\n\n${PDF_FORMAT}`;
+    } else {
+      prompt = `Analisa o PDF "${filename || "documento"}" e produz material de estudo estruturado.\n\n${PDF_FORMAT}`;
     }
 
-    // Se tem imagens (paginas do PDF renderizadas), usa visao
     let responseText;
+    let model = "gemini-2.0-flash";
+
+    // Se tem imagens (paginas do PDF renderizadas), usa visao
     if (images && images.length > 0) {
-      const body = buildGeminiRequest(prompt, images);
-      
-      let attempt = 0;
-      const MAX_RETRIES = 1;
-      while (attempt <= MAX_RETRIES) {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
-        try {
-          const res = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            signal: controller.signal,
-            body: JSON.stringify(body),
-          });
+      const imageData = images.map((img) => {
+        const base64Data = typeof img === "string"
+          ? (img.includes("base64,") ? img.split("base64,")[1] : img)
+          : img;
+        return { inlineData: { mimeType: "image/jpeg", data: base64Data } };
+      });
 
-          if (!res.ok) {
-            const errorText = await res.text();
-            throw new Error(`Gemini error ${res.status}: ${errorText}`);
-          }
-
-          const data = await res.json();
-          responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-          break;
-        } catch (err) {
-          if (attempt === MAX_RETRIES) throw err;
-          console.warn(`[API /pdf] Falha na tentativa ${attempt + 1}: ${err.message}. Retentando...`);
-          attempt++;
-        } finally {
-          clearTimeout(timeoutId);
-        }
-      }
+      // Gemini vision directamente (PDFs so funcionam com Gemini)
+      const { callGeminiVision } = await import("@/lib/ai-provider");
+      responseText = await callGeminiVision(
+        [{ role: "user", content: prompt }],
+        imageData,
+        { system: PDF_SYSTEM, temperature: 0.4, maxTokens: 8192 }
+      );
     } else {
-      // Apenas texto - usa o provider central (ja tem fallback automatico)
-      const { generateContent } = await import("@/lib/ai-provider");
-      let attempt = 0;
-      const MAX_RETRIES = 1;
-      while (attempt <= MAX_RETRIES) {
-        try {
-          responseText = await generateContent(prompt, {
-            provider: "gemini",
-            temperature: 0.4,
-            maxTokens: 8192,
-          });
-          break;
-        } catch (err) {
-          if (attempt === MAX_RETRIES) throw err;
-          console.warn(`[API /pdf] Texto falhou tentativa ${attempt + 1}. Retentando...`);
-          attempt++;
-        }
-      }
+      // Apenas texto — usa provider central com fallback
+      const result = await generateContent(prompt, {
+        provider: "gemini",
+        capability: "pdf",
+        system: PDF_SYSTEM,
+        temperature: 0.4,
+        maxTokens: 8192,
+      });
+      responseText = result.text;
+      model = result.model;
     }
 
     // Extrair titulo do resultado
     const titleMatch = responseText.match(/^#\s+(.+)$/m);
     const resultTitle = titleMatch ? titleMatch[1].trim() : (filename || "Analise de PDF");
 
+    const latencyMs = Date.now() - startTime;
+    console.log("[PDF] Analisado:", { model, latencyMs, hasImages: images?.length > 0 });
+
     return NextResponse.json({
       markdown: responseText,
       title: resultTitle,
-      model: "gemini-2.0-flash",
+      model,
+      meta: { latencyMs },
     });
   } catch (error) {
     console.error("[API /pdf] Erro:", error);

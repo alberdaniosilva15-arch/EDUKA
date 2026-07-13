@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
-import { generateContent } from "@/lib/ai-provider";
-import { buildImprovePrompt } from "@/lib/prompts";
+import { generateContent } from "@/lib/ai";
+import { buildImprovePrompt } from "@/lib/ai/prompts/improve";
+import { IMPROVE_SYSTEM } from "@/lib/ai/systems/improve";
 import { sanitizeInput } from "@/lib/utils";
-import { authenticateAndRateLimit, validateSchema } from "@/lib/api-helpers";
+import { authenticateAndRateLimit, validateSchema, withRateLimitHeaders } from "@/lib/api-helpers";
 import { improveSchema } from "@/lib/api-schemas";
 
 export async function POST(request) {
   try {
-    // 1. Auth + Rate limit por user_id
-    const { user, supabase, error: authError } = await authenticateAndRateLimit(request);
+    // 1. Auth + Rate limit
+    const { user, supabase, error: authError, rateLimit } = await authenticateAndRateLimit(request);
     if (authError) return authError;
 
-    // 2. Parse + sanitizar + validar com Zod
+    // 2. Parse + sanitizar + validar
     const raw = await request.json();
     const sanitized = {
       texto: sanitizeInput(raw.texto),
@@ -22,9 +23,32 @@ export async function POST(request) {
 
     // 3. Gerar conteúdo
     const prompt = buildImprovePrompt(data);
-    const result = await generateContent(prompt);
+    const result = await generateContent(prompt, {
+      provider: "openrouter",
+      system: IMPROVE_SYSTEM,
+      temperature: 0.55,
+      maxTokens: 4096,
+    });
 
-    return NextResponse.json({ result, provider: "auto" });
+    // 4. Telemetria
+    console.log("[Improve] Gerado:", {
+      provider: result.provider,
+      model: result.model,
+      latencyMs: result.latencyMs,
+      mode: data.tipo,
+      creditsUsed: rateLimit?.cost || 1,
+    });
+
+    const response = NextResponse.json({
+      result: result.text,
+      meta: {
+        provider: result.provider,
+        model: result.model,
+        latencyMs: result.latencyMs,
+      },
+    });
+
+    return withRateLimitHeaders(response, rateLimit);
   } catch (error) {
     console.error("[API /improve] Erro:", error);
     return NextResponse.json(
