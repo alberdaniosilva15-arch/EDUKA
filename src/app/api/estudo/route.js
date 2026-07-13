@@ -4,6 +4,7 @@ import { buildStudyPrompt } from "@/lib/prompts";
 import { sanitizeInput } from "@/lib/utils";
 import { authenticateAndRateLimit, validateSchema } from "@/lib/api-helpers";
 import { estudoSchema } from "@/lib/api-schemas";
+import { getProviderForModel } from "@/lib/free-models";
 
 export async function POST(request) {
   try {
@@ -18,14 +19,21 @@ export async function POST(request) {
       timeframe: sanitizeInput(raw.timeframe),
       course: sanitizeInput(raw.course),
       difficulty: sanitizeInput(raw.difficulty),
+      model: raw.model || "meta-llama/llama-3.3-70b-instruct:free",
     };
     const { valid, data, error: validationError } = validateSchema(estudoSchema, sanitized);
     if (!valid) return validationError;
 
-    // 3. Gerar conteúdo
+    // 3. Gerar conteudo com provider correto
     const prompt = buildStudyPrompt(data);
-    const markdownResponse = await generateContent(prompt);
-    
+    const provider = getProviderForModel(data.model);
+    const markdownResponse = await generateContent(prompt, {
+      provider,
+      model: data.model,
+      temperature: 0.65,
+      maxTokens: 8192,
+    });
+
     return NextResponse.json({ markdown: markdownResponse });
 
   } catch (error) {

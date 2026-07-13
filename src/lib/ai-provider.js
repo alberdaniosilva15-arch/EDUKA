@@ -6,11 +6,13 @@
  */
 import { DEFAULT_GROQ_CHAT_MODEL } from "@/lib/groq-models";
 
-const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+const GEMINI_BASE_URL =
+  "https://generativelanguage.googleapis.com/v1beta/models";
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const API_TIMEOUT_MS = 45000;
+
+const GEMINI_MODEL_ALLOWLIST = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.5-pro"];
 
 export const DEFAULT_MODELS = {
   openrouter: "meta-llama/llama-3.3-70b-instruct:free",
@@ -18,6 +20,11 @@ export const DEFAULT_MODELS = {
   nvidia: "nvidia/nemotron-3-super-120b-a12b",
   gemini: "gemini-2.0-flash",
 };
+
+function getGeminiUrl(model) {
+  const m = GEMINI_MODEL_ALLOWLIST.includes(model) ? model : "gemini-2.0-flash";
+  return `${GEMINI_BASE_URL}/${m}:generateContent`;
+}
 // ─── Helpers ──────────────────────────────────────────────────
 
 function buildGeminiContents(prompt, images) {
@@ -36,13 +43,25 @@ function buildGeminiContents(prompt, images) {
   return { contents: [{ parts }] };
 }
 
-function buildGeminiMessages(messages, images) {
+function buildGeminiMessages(messages, images, system) {
   // Converte messages array para formato Gemini com imagens no user message
   const geminiContents = [];
-  
+
+  // Se houver system prompt, insere como primeira conversa user/model
+  if (system) {
+    geminiContents.push({
+      role: "user",
+      parts: [{ text: system }],
+    });
+    geminiContents.push({
+      role: "model",
+      parts: [{ text: "Combinado. Vou seguir estas instrucoes." }],
+    });
+  }
+
   for (const msg of messages) {
     if (msg.role === "system") {
-      // Gemini system prompt vai como user message inicial com role "user"
+      // System prompt inline no array de mensagens
       geminiContents.push({
         role: "user",
         parts: [{ text: msg.content }],
@@ -56,13 +75,20 @@ function buildGeminiMessages(messages, images) {
       // Adiciona imagens apenas na ultima mensagem do user
       if (images && images.length > 0 && msg === messages.filter(m => m.role === "user").pop()) {
         for (const img of images) {
-          const base64Data = img.includes("base64,") ? img.split("base64,")[1] : img;
-          parts.push({
-            inlineData: {
-              mimeType: "image/jpeg",
-              data: base64Data,
-            },
-          });
+          // Suporta dois formatos: string base64 (imagens) e objetos inlineData (PDFs)
+          if (typeof img === "object" && img.inlineData) {
+            parts.push(img);
+          } else {
+            const base64Data = typeof img === "string"
+              ? (img.includes("base64,") ? img.split("base64,")[1] : img)
+              : img;
+            parts.push({
+              inlineData: {
+                mimeType: "image/jpeg",
+                data: base64Data,
+              },
+            });
+          }
         }
       }
       geminiContents.push({ role: "user", parts });
@@ -73,7 +99,7 @@ function buildGeminiMessages(messages, images) {
       });
     }
   }
-  
+
   return { contents: geminiContents };
 }
 
@@ -89,12 +115,13 @@ async function callGemini(prompt, options = {}) {
   try {
     const body = buildGeminiContents(prompt, options.images);
     body.generationConfig = {
-      temperature: options.temperature || 0.7,
-      maxOutputTokens: options.maxTokens || 8192,
+      temperature: options.temperature ?? 0.7,
+      maxOutputTokens: options.maxTokens ?? 8192,
       topP: 0.95,
     };
 
-    const res = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+    const model = options.model || "gemini-2.0-flash";
+    const res = await fetch(`${getGeminiUrl(model)}?key=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: controller.signal,
@@ -124,14 +151,19 @@ export async function callGeminiVision(messages, images, options = {}) {
   const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
   try {
-    const body = buildGeminiMessages(messages, images);
+    const body = buildGeminiMessages(messages, images, options.system);
     body.generationConfig = {
-      temperature: options.temperature || 0.7,
-      maxOutputTokens: options.maxTokens || 8192,
+      temperature: options.temperature ?? 0.7,
+      maxOutputTokens: options.maxTokens ?? 8192,
       topP: 0.95,
     };
 
-    const res = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+    if (options.system) {
+      body.systemInstruction = { parts: [{ text: options.system }] };
+    }
+
+    const model = options.model || "gemini-2.0-flash";
+    const res = await fetch(`${getGeminiUrl(model)}?key=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: controller.signal,

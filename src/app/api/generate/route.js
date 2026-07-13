@@ -33,7 +33,7 @@ export async function POST(request) {
       maxTokens: 8192,
     });
 
-    return NextResponse.json({ result, provider: "groq-research-auto-fallback" });
+    return NextResponse.json({ result, provider: "openrouter" });
   } catch (error) {
     console.error("[API /generate] Erro:", error);
     return NextResponse.json(

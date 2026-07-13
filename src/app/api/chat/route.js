@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { authenticateAndRateLimit, validateSchema } from "@/lib/api-helpers";
 import { chatSchema } from "@/lib/api-schemas";
-import { callGroqMessages, callOpenRouterMessages, callVision, callGeminiVision } from "@/lib/ai-provider";
+import { callGroqMessages, callOpenRouterMessages, callVision, callGeminiVision, callNvidiaMessages } from "@/lib/ai-provider";
 import { FREE_MODELS, isVisionModel, getProviderForModel } from "@/lib/free-models";
 import { sanitizeInput } from "@/lib/utils";
 
@@ -83,16 +83,22 @@ export async function POST(request) {
 
     const raw = await request.json();
     const modelId = raw.model || FREE_MODELS[0].id;
+
+    const rawFiles = Array.isArray(raw.files) ? raw.files : [];
+
     const sanitized = {
       model: isFreeModel(modelId) ? modelId : FREE_MODELS[0].id,
       messages: Array.isArray(raw.messages)
         ? raw.messages.map((message) => ({
             role: message.role,
             content: sanitizeInput(message.content || ""),
-            files: message.files || undefined,
           }))
         : [],
-      files: raw.files || [],
+      files: rawFiles.map((f) => ({
+        name: String(f.name || "file").slice(0, 255),
+        type: String(f.type || ""),
+        data: String(f.data || ""),
+      })),
     };
 
     const { valid, data, error: validationError } = validateSchema(chatSchema, sanitized);
@@ -101,77 +107,64 @@ export async function POST(request) {
     const messages = data.messages.slice(-20);
     const files = data.files || [];
     const hasVisionFiles = hasVisualFiles(files);
+    const hasPdf = files.some((f) => f.type === "application/pdf");
 
+    const provider = getProviderForModel(data.model);
     let content;
 
     // ── SE TEM FICHEIROS VISUAIS ──
     if (hasVisionFiles) {
-      const visionModel = isVisionModel(data.model) ? data.model : "gemini-2.0-flash";
-      const provider = getProviderForModel(visionModel);
+      // PDFs nativos so funcionam com Gemini. Forcar Gemini se houver PDFs.
+      const effectiveProvider = (hasPdf && provider !== "gemini") ? "gemini" : provider;
+      const visionModel = (effectiveProvider === "gemini") ? "gemini-2.0-flash"
+        : isVisionModel(data.model) ? data.model : "google/gemma-4-31b-it:free";
 
-      // Extrair imagens dos ficheiros (imagens directas ou PDF convertido)
       const imageData = [];
       for (const file of files) {
         if (file.type?.startsWith("image/") && file.data) {
-          imageData.push(file.data);
+          if (effectiveProvider === "gemini") {
+            const base64Data = file.data.includes("base64,") ? file.data.split("base64,")[1] : file.data;
+            imageData.push({ inlineData: { mimeType: file.type, data: base64Data } });
+          } else {
+            imageData.push(file.data);
+          }
         } else if (file.type === "application/pdf" && file.data) {
-          // PDF como imagem via Gemini (Gemini aceita PDF nativamente)
-          // Enviar o proprio PDF como imagem
-          imageData.push(file.data);
+          if (effectiveProvider === "gemini") {
+            const base64Data = file.data.includes("base64,") ? file.data.split("base64,")[1] : file.data;
+            imageData.push({ inlineData: { mimeType: "application/pdf", data: base64Data } });
+          }
+          // PDFs for OpenRouter: skip (not supported as image_url)
         }
       }
 
-      // Se nao conseguiu extrair imagens, fallback para texto
       if (imageData.length === 0) {
-        content = await callOpenRouterMessages(messages, {
-          model: data.model,
-          system: CHAT_SYSTEM_PROMPT,
-          temperature: 0.72,
-          maxTokens: 4096,
+        content = await callOpenRouterMessages(messages, { model: data.model, system: CHAT_SYSTEM_PROMPT });
+      } else if (effectiveProvider === "gemini") {
+        content = await callGeminiVision(messages, imageData, {
+          model: visionModel, system: CHAT_SYSTEM_PROMPT, temperature: 0.72, maxTokens: 4096,
         });
       } else {
-        content = await callVision(messages, imageData, {
-          model: visionModel,
-          provider,
-          system: CHAT_SYSTEM_PROMPT,
-          temperature: 0.72,
-          maxTokens: 4096,
+        content = await callOpenRouterVision(messages, imageData, {
+          model: visionModel, system: CHAT_SYSTEM_PROMPT, temperature: 0.72, maxTokens: 4096,
         });
       }
     }
     // ── SEM FICHEIROS ──
-    else if (data.model.includes(":free") || data.model.includes("openrouter")) {
-      content = await callOpenRouterMessages(messages, {
-        model: data.model,
-        system: CHAT_SYSTEM_PROMPT,
-        temperature: 0.72,
-        maxTokens: 4096,
-      });
-    } else if (data.model.includes("gemini")) {
-      content = await callGeminiVision(messages, [], {
-        model: data.model,
-        system: CHAT_SYSTEM_PROMPT,
-        temperature: 0.72,
-        maxTokens: 4096,
-      });
-    } else {
-      content = await callGroqMessages(messages, {
-        model: data.model,
-        system: CHAT_SYSTEM_PROMPT,
-        temperature: 0.72,
-        maxTokens: 4096,
-      });
+    else {
+      if (provider === "openrouter") {
+        content = await callOpenRouterMessages(messages, { model: data.model, system: CHAT_SYSTEM_PROMPT, temperature: 0.72, maxTokens: 4096 });
+      } else if (provider === "gemini") {
+        content = await callGeminiVision(messages, [], { model: data.model, system: CHAT_SYSTEM_PROMPT, temperature: 0.72, maxTokens: 4096 });
+      } else if (provider === "nvidia") {
+        content = await callNvidiaMessages(messages, { model: data.model, system: CHAT_SYSTEM_PROMPT, temperature: 0.72, maxTokens: 4096 });
+      } else {
+        content = await callGroqMessages(messages, { model: data.model, system: CHAT_SYSTEM_PROMPT, temperature: 0.72, maxTokens: 4096 });
+      }
     }
 
-    return NextResponse.json({
-      message: { role: "assistant", content },
-      model: data.model,
-    });
+    return NextResponse.json({ message: { role: "assistant", content }, model: data.model });
   } catch (error) {
     console.error("[API /chat] Erro:", error);
-    return NextResponse.json(
-      { error: error.message || "Erro ao conversar com a IA." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || "Erro ao conversar com a IA." }, { status: 500 });
   }
 }

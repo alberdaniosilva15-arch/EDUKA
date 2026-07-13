@@ -4,6 +4,7 @@ import { buildPremiumSlidesPrompt } from "@/lib/quality-prompts";
 import { sanitizeInput } from "@/lib/utils";
 import { authenticateAndRateLimit, validateSchema } from "@/lib/api-helpers";
 import { slidesSchema } from "@/lib/api-schemas";
+import { getProviderForModel } from "@/lib/free-models";
 
 function parseSlidesJson(rawResponse) {
   const cleanJson = rawResponse.replace(/```json/g, "").replace(/```/g, "").trim();
@@ -42,10 +43,8 @@ export async function POST(request) {
     const { valid, data, error: validationError } = validateSchema(slidesSchema, sanitized);
     if (!valid) return validationError;
 
-    // 3. Determinar provider a partir do model ID
-    const provider = data.model.includes(":free") ? "openrouter"
-      : data.model.includes("gemini") ? "gemini"
-      : "groq";
+    // 3. Determinar provider pela allowlist unica
+    const provider = getProviderForModel(data.model);
 
     // 4. Gerar conteúdo
     const prompt = buildPremiumSlidesPrompt(data);

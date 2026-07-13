@@ -2,6 +2,8 @@
  * Eduka — PDF Parser
  * Extrai texto de PDFs (browser-side com pdf.js)
  * Converte páginas para imagens base64 (para modelos vision)
+ * 
+ * Worker usa ficheiro local do pdfjs-dist instalado (sem CDN externa)
  */
 
 let pdfjsLib = null;
@@ -9,8 +11,12 @@ let pdfjsLib = null;
 async function getPdfJs() {
   if (!pdfjsLib) {
     pdfjsLib = await import("pdfjs-dist");
-    const workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js`;
-    pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+    // Worker local — garante match exato com a versão instalada do pdfjs-dist
+    // Evita o mismatch CDN v4.0.379 vs pdfjs-dist ^4.10.38
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+      "pdfjs-dist/build/pdf.worker.min.mjs",
+      import.meta.url
+    ).toString();
   }
   return pdfjsLib;
 }

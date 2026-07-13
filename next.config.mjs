@@ -1,13 +1,17 @@
 /** @type {import('next').NextConfig} */
 
-// Security headers configuration
+const isDev = process.env.NODE_ENV !== 'production';
+
+// Security headers configuration — CSP separada dev/produção
 const securityHeaders = [
   {
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      // Scripts: self + unsafe-eval (React dev) + unsafe-inline (styled-jsx)
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com",
+      // Scripts: produção sem unsafe-eval — dev precisa para React hot reload
+      isDev
+        ? "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com"
+        : "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com",
       // Styles: self + inline (styled-jsx) + Google Fonts
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       // Images: self + data URIs + https + blob (Spline textures)
@@ -18,6 +22,8 @@ const securityHeaders = [
       "connect-src 'self' https://generativelanguage.googleapis.com https://api.groq.com https://*.supabase.co wss://*.supabase.co https://my.spline.design https://prod.spline.design",
       // Frame/Spline: Spline scene viewer
       "frame-src https://my.spline.design https://prod.spline.design https://viewer.spline.design",
+      // Worker: pdf.js web worker (ficheiro local bundled)
+      "worker-src 'self' blob:",
       // Media: local video
       "media-src 'self' blob:",
       // Objects: none
@@ -28,8 +34,8 @@ const securityHeaders = [
       "base-uri 'self'",
       // Form action: self only
       "form-action 'self'",
-      // Upgrade insecure requests in production
-      "upgrade-insecure-requests",
+      // Upgrade insecure requests in production only
+      ...(isDev ? [] : ["upgrade-insecure-requests"]),
     ].join('; '),
   },
   {
@@ -63,6 +69,9 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  // Prevent false "multiple lockfiles" warnings
+  outputFileTracingRoot: process.cwd(),
+
   // Security headers
   async headers() {
     return [

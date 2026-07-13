@@ -115,9 +115,26 @@ export const estudoSchema = z.object({
     .max(50)
     .optional()
     .default('média'),
+  model: z
+    .string()
+    .max(200)
+    .optional()
+    .default('meta-llama/llama-3.3-70b-instruct:free'),
 });
 
 // ─── /api/chat ───────────────────────────────────────────────
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB per file
+const MAX_FILES = 5;
+const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'];
+
+const fileSchema = z.object({
+  name: z.string().max(255),
+  type: z.string().refine((t) => ALLOWED_MIME.includes(t), {
+    message: "Tipo de ficheiro não suportado. Apenas PNG, JPEG, WebP e PDF.",
+  }),
+  data: z.string().max(7 * 1024 * 1024, "Ficheiro excede 5MB (limite base64)."),
+});
+
 export const chatSchema = z.object({
   model: z
     .string()
@@ -134,4 +151,9 @@ export const chatSchema = z.object({
     }))
     .min(1, "Envia pelo menos uma mensagem.")
     .max(30, "A conversa enviada é demasiado longa."),
+  files: z
+    .array(fileSchema)
+    .max(MAX_FILES, `Máximo ${MAX_FILES} ficheiros.`)
+    .optional()
+    .default([]),
 });
