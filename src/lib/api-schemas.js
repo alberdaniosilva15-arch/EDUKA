@@ -127,13 +127,21 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB per file
 const MAX_FILES = 5;
 const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'];
 
-const fileSchema = z.object({
-  name: z.string().max(255),
-  type: z.string().refine((t) => ALLOWED_MIME.includes(t), {
-    message: "Tipo de ficheiro não suportado. Apenas PNG, JPEG, WebP e PDF.",
-  }),
-  data: z.string().max(7 * 1024 * 1024, "Ficheiro excede 5MB (limite base64)."),
-});
+const fileSchema = z
+  .object({
+    name: z.string().max(255),
+    type: z.string().refine((t) => ALLOWED_MIME.includes(t), {
+      message: "Tipo de ficheiro não suportado. Apenas PNG, JPEG, WebP e PDF.",
+    }),
+    url: z.string().max(2048).optional(),
+    data: z
+      .string()
+      .max(7 * 1024 * 1024, "Ficheiro excede 5MB (limite base64).")
+      .optional(),
+  })
+  .refine((f) => Boolean(f.url) || Boolean(f.data), {
+    message: "Ficheiro sem 'url' nem 'data'.",
+  });
 
 export const chatSchema = z.object({
   model: z

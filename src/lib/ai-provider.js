@@ -208,7 +208,7 @@ export async function callGroqMessages(messages, options = {}) {
         model,
         messages: [
           { role: "system", content: system },
-          ...messages,
+          ...messages.filter((m) => m.role !== "system"),
         ],
         temperature,
         max_tokens: maxTokens,
@@ -266,7 +266,7 @@ export async function callOpenRouterMessages(messages, options = {}) {
         model,
         messages: [
           { role: "system", content: system },
-          ...messages,
+          ...messages.filter((m) => m.role !== "system"),
         ],
         temperature,
         max_tokens: maxTokens,
@@ -393,7 +393,7 @@ export async function callNvidiaMessages(messages, options = {}) {
         model,
         messages: [
           { role: "system", content: system },
-          ...messages,
+          ...messages.filter((m) => m.role !== "system"),
         ],
         temperature,
         max_tokens: maxTokens,

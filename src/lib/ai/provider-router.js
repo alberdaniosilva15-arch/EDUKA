@@ -267,11 +267,11 @@ export async function callVision(messages, images, options = {}) {
       contents.push({ role: "model", parts: [{ text: "Combinado." }] });
     }
 
-    for (const msg of messages) {
-      if (msg.role === "system") {
-        contents.push({ role: "user", parts: [{ text: msg.content }] });
-        contents.push({ role: "model", parts: [{ text: "Combinado." }] });
-      } else if (msg.role === "user") {
+    // Filtrar system messages duplicados quando system já foi fornecido
+    const filteredMessages = system ? messages.filter((m) => m.role !== "system") : messages;
+
+    for (const msg of filteredMessages) {
+      if (msg.role === "user") {
         const parts = [{ text: msg.content }];
         if (images?.length > 0 && msg === messages.filter((m) => m.role === "user").pop()) {
           for (const img of images) {

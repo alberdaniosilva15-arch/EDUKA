@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { authenticateAndRateLimit, validateSchema } from "@/lib/api-helpers";
 import { chatSchema } from "@/lib/api-schemas";
-import { callGroqMessages, callOpenRouterMessages, callGeminiVision, callOpenRouterVision, callNvidiaMessages } from "@/lib/ai-provider";
+import { callGroqMessages, callOpenRouterMessages, callGeminiVision, callOpenRouterVision } from "@/lib/ai-provider";
 import { FREE_MODELS, isVisionModel, getProviderForModel } from "@/lib/free-models";
 import { CHAT_SYSTEM } from "@/lib/ai/systems/chat";
 import { sanitizeInput } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 function isFreeModel(modelId) {
   return FREE_MODELS.some((m) => m.id === modelId);
@@ -88,18 +89,59 @@ export async function POST(request) {
       model = visionModel;
 
       const imageData = [];
+      const adminClient = createAdminClient();
+
       for (const file of files) {
-        if (file.type?.startsWith("image/") && file.data) {
+        const isImage = file.type?.startsWith("image/");
+        const isPdf = file.type === "application/pdf";
+        if (!isImage && !isPdf) continue;
+
+        if (file.url) {
+          // O frontend deve enviar em file.url o PATH do storage. Ex: 'user_id/hash.png'
+          // Assumimos que o bucket privado se chama 'chat-files'
           if (effectiveProvider === "gemini") {
-            const base64Data = file.data.includes("base64,") ? file.data.split("base64,")[1] : file.data;
-            imageData.push({ inlineData: { mimeType: file.type, data: base64Data } });
-          } else {
-            imageData.push(file.data);
+            try {
+              // Descarrega diretamente via service_role, abstraindo o RLS e bucket privado
+              const { data: fileData, error } = await adminClient.storage.from("chat-files").download(file.url);
+              if (error) throw error;
+              
+              const arrayBuffer = await fileData.arrayBuffer();
+              const base64Data = Buffer.from(arrayBuffer).toString("base64");
+              
+              imageData.push({
+                inlineData: { mimeType: file.type, data: base64Data },
+              });
+            } catch (err) {
+              console.warn("[Chat] Falha ao descarregar ficheiro do Storage via Admin:", err.message);
+            }
+          } else if (isImage) {
+            try {
+              // OpenRouter precisa de link público, geramos URL temporária assinada pelo admin
+              const { data: signed, error: signError } = await adminClient.storage
+                .from("chat-files")
+                .createSignedUrl(file.url, 3600); // Válido por 1 hora
+              if (signError) throw signError;
+              
+              imageData.push(signed.signedUrl);
+            } catch (err) {
+              console.warn("[Chat] Falha a gerar Signed URL:", err.message);
+            }
           }
-        } else if (file.type === "application/pdf" && file.data) {
+          continue;
+        }
+
+        // Fallback antigo (mantém retrocompatibilidade até o front migrar 100%)
+        if (file.data) {
+          const base64Data = file.data.includes("base64,")
+            ? file.data.split("base64,")[1]
+            : file.data;
+          
           if (effectiveProvider === "gemini") {
-            const base64Data = file.data.includes("base64,") ? file.data.split("base64,")[1] : file.data;
-            imageData.push({ inlineData: { mimeType: "application/pdf", data: base64Data } });
+            imageData.push({
+              inlineData: { mimeType: file.type, data: base64Data },
+            });
+          } else if (isImage) {
+            imageData.push(file.data);
           }
         }
       }
@@ -122,8 +164,6 @@ export async function POST(request) {
         content = await callOpenRouterMessages(messages, { model: data.model, system: CHAT_SYSTEM, temperature: 0.72, maxTokens: 4096 });
       } else if (provider === "gemini") {
         content = await callGeminiVision(messages, [], { model: data.model, system: CHAT_SYSTEM, temperature: 0.72, maxTokens: 4096 });
-      } else if (provider === "nvidia") {
-        content = await callNvidiaMessages(messages, { model: data.model, system: CHAT_SYSTEM, temperature: 0.72, maxTokens: 4096 });
       } else {
         content = await callGroqMessages(messages, { model: data.model, system: CHAT_SYSTEM, temperature: 0.72, maxTokens: 4096 });
       }
