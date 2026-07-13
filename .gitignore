@@ -44,3 +44,10 @@ next-env.d.ts
 .mimocode/
 # backup de debug
 .backup-debug/
+
+# ficheiros locais e de seguranca
+codigo-seguranca.txt
+conversa.txt
+build_error.txt
+eduka-full-report.txt
+dev-server*.log
