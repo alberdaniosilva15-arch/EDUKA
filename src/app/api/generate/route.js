@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { generateContent, getProviderForModel } from "@/lib/ai";
+import { generateContent } from "@/lib/ai";
 import { buildWorkPrompt, WORK_RUBRIC } from "@/lib/ai/prompts/work";
 import { WORK_SYSTEM } from "@/lib/ai/systems/work";
 import { scoreWork } from "@/lib/ai/schemas/output";

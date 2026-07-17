@@ -55,13 +55,13 @@ async function checkUserRateLimit(userId, route) {
     .single();
 
   if (rpcError) {
-    console.error("[RateLimit] RPC increment_rate_limit FALHOU — rate limit desactivado:", rpcError.message);
-    // Fallback: permitir se RPC falhar (não bloquear utilizadores por erro de infra)
-    // O cliente NÃO deve saber que o rate limit está desactivado — responde normalmente.
+    console.error("[RateLimit] RPC increment_rate_limit FALHOU — rate limit FAIL-CLOSED:", rpcError.message);
+    // Fallback: agora em vez de permitir, bloqueamos se a infraestrutura falhar 
+    // para evitar abuso caso a migration não esteja aplicada.
     return {
-      allowed: true,
+      allowed: false,
       creditsUsed: cost,
-      creditsRemaining: RL_MAX_CREDITS - cost,
+      creditsRemaining: 0,
       resetIn: RL_WINDOW_MS,
       cost,
     };

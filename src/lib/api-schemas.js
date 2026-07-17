@@ -66,7 +66,7 @@ export const generateSchema = z.object({
     .default(''),
   tipo_trabalho: z
     .enum(['universitario', 'escolar', 'tecnico'], {
-      error_map: () => ({ message: "Tipo deve ser: universitario, escolar ou tecnico" })
+      error: () => ({ message: "Tipo deve ser: universitario, escolar ou tecnico" })
     })
     .optional()
     .default('universitario'),

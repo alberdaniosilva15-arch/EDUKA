@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
-    "build": "set NODE_OPTIONS=--max_old_space_size=4096 && next build",
+    "build": "cross-env NODE_OPTIONS=--max_old_space_size=4096 next build",
     "start": "next start",
     "lint": "eslint"
   },
@@ -30,6 +30,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "^15.3.3",
     "typescript": "^5.7.0"

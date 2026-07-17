@@ -51,3 +51,8 @@ conversa.txt
 build_error.txt
 eduka-full-report.txt
 dev-server*.log
+
+build*.log
+check-db.js
+test-*.js
+*.pptx

@@ -68,7 +68,7 @@ Gera um currículo profissional completo e bem formatado.
 - LinkedIn: [link]
 
 ## Objetivo Profissional
-[2-3 frases a.onResume o perfil e o que procura]
+[2-3 frases a descrever o perfil e o que procura]
 
 ## Formação Académica
 **[Curso]** — [Instituição]

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateContent, getProviderForModel } from "@/lib/ai";
-import { buildSlidesPrompt, SLIDES_SYSTEM } from "@/lib/ai/prompts/slides";
+import { buildSlidesPrompt } from "@/lib/ai/prompts/slides";
 import { slidesOutputSchema, repairSlides, scoreSlides } from "@/lib/ai/schemas/output";
 import { evaluateSlidesQuality } from "@/lib/ai/quality/rubrics";
 import { sanitizeInput } from "@/lib/utils";
