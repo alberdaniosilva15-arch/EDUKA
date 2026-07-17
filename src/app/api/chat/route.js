@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { authenticateAndRateLimit, validateSchema } from "@/lib/api-helpers";
 import { chatSchema } from "@/lib/api-schemas";
-import { callGroqMessages, callOpenRouterMessages, callGeminiVision, callOpenRouterVision } from "@/lib/ai-provider";
-import { FREE_MODELS, isVisionModel, getProviderForModel } from "@/lib/free-models";
+import { generateContent, callVision, getProviderForModel } from "@/lib/ai";
+import { FREE_MODELS } from "@/lib/free-models";
 import { CHAT_SYSTEM } from "@/lib/ai/systems/chat";
 import { sanitizeInput } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+
+const VISION_MODEL = "google/gemma-4-26b-a4b-it:free";
 
 function isFreeModel(modelId) {
   return FREE_MODELS.some((m) => m.id === modelId);
@@ -22,10 +23,11 @@ function hasVisualFiles(files) {
 /**
  * Guarda mensagem no Supabase se conversation_id for fornecido.
  */
-async function saveMessage(supabase, conversationId, role, content, meta = {}) {
-  if (!conversationId || !supabase) return;
+async function saveMessage(conversationId, role, content, meta = {}) {
+  if (!conversationId) return;
   try {
-    await supabase.from("chat_messages").insert({
+    const adminDb = createAdminClient();
+    await adminDb.from("chat_messages").insert({
       conversation_id: conversationId,
       role,
       content,
@@ -82,46 +84,35 @@ export async function POST(request) {
 
     // ── SE TEM FICHEIROS VISUAIS ──
     if (hasVisionFiles) {
-      const effectiveProvider = (hasPdf && provider !== "gemini") ? "gemini" : provider;
-      provider = effectiveProvider;
-      const visionModel = (effectiveProvider === "gemini") ? "gemini-2.0-flash"
-        : isVisionModel(data.model) ? data.model : "google/gemma-4-31b-it:free";
-      model = visionModel;
-
       const imageData = [];
       const adminClient = createAdminClient();
 
+      // Processar ficheiros
       for (const file of files) {
         const isImage = file.type?.startsWith("image/");
         const isPdf = file.type === "application/pdf";
         if (!isImage && !isPdf) continue;
 
         if (file.url) {
-          // O frontend deve enviar em file.url o PATH do storage. Ex: 'user_id/hash.png'
-          // Assumimos que o bucket privado se chama 'chat-files'
-          if (effectiveProvider === "gemini") {
+          // Caminho do storage
+          if (isPdf) {
+            // PDF precisa de Gemini (download direto)
             try {
-              // Descarrega diretamente via service_role, abstraindo o RLS e bucket privado
               const { data: fileData, error } = await adminClient.storage.from("chat-files").download(file.url);
               if (error) throw error;
-              
               const arrayBuffer = await fileData.arrayBuffer();
               const base64Data = Buffer.from(arrayBuffer).toString("base64");
-              
-              imageData.push({
-                inlineData: { mimeType: file.type, data: base64Data },
-              });
+              imageData.push({ inlineData: { mimeType: "application/pdf", data: base64Data } });
             } catch (err) {
-              console.warn("[Chat] Falha ao descarregar ficheiro do Storage via Admin:", err.message);
+              console.warn("[Chat] Falha ao descarregar PDF:", err.message);
             }
-          } else if (isImage) {
+          } else {
+            // Imagem - tentar signed URL para OpenRouter
             try {
-              // OpenRouter precisa de link público, geramos URL temporária assinada pelo admin
               const { data: signed, error: signError } = await adminClient.storage
                 .from("chat-files")
-                .createSignedUrl(file.url, 3600); // Válido por 1 hora
+                .createSignedUrl(file.url, 3600);
               if (signError) throw signError;
-              
               imageData.push(signed.signedUrl);
             } catch (err) {
               console.warn("[Chat] Falha a gerar Signed URL:", err.message);
@@ -130,16 +121,14 @@ export async function POST(request) {
           continue;
         }
 
-        // Fallback antigo (mantém retrocompatibilidade até o front migrar 100%)
+        // Fallback antigo (base64 inline)
         if (file.data) {
           const base64Data = file.data.includes("base64,")
             ? file.data.split("base64,")[1]
             : file.data;
           
-          if (effectiveProvider === "gemini") {
-            imageData.push({
-              inlineData: { mimeType: file.type, data: base64Data },
-            });
+          if (isPdf) {
+            imageData.push({ inlineData: { mimeType: "application/pdf", data: base64Data } });
           } else if (isImage) {
             imageData.push(file.data);
           }
@@ -147,25 +136,56 @@ export async function POST(request) {
       }
 
       if (imageData.length === 0) {
-        content = await callOpenRouterMessages(messages, { model: data.model, system: CHAT_SYSTEM });
-      } else if (effectiveProvider === "gemini") {
-        content = await callGeminiVision(messages, imageData, {
-          model: visionModel, system: CHAT_SYSTEM, temperature: 0.72, maxTokens: 4096,
+        // Sem dados de imagem, usar chat normal
+        const fallbackResult = await generateContent(messages, {
+          provider: "groq", model: data.model,
+          system: CHAT_SYSTEM, temperature: 0.72, maxTokens: 4096,
         });
+        content = fallbackResult.text;
       } else {
-        content = await callOpenRouterVision(messages, imageData, {
-          model: visionModel, system: CHAT_SYSTEM, temperature: 0.72, maxTokens: 4096,
-        });
+        try {
+          content = await callVision(messages, imageData, {
+            model: VISION_MODEL, system: CHAT_SYSTEM,
+            temperature: 0.72, maxTokens: 4096,
+          });
+          provider = "openrouter";
+          model = VISION_MODEL;
+        } catch (err) {
+          console.warn("[Chat] Vision falhou:", err.message);
+        }
+
+        // Se todos falharam, usar Groq sem vision (descrever a imagem)
+        if (!content) {
+          const imageDescription = hasPdf
+            ? "[Utilizador enviou um PDF. Pede para descrever o conteúdo.]"
+            : "[Utilizador enviou uma imagem. Pede para descrever o conteúdo.]";
+          const groqResult = await generateContent(
+            [...messages, { role: "user", content: imageDescription }],
+            { provider: "groq", model: "llama-3.3-70b-versatile",
+              system: CHAT_SYSTEM, temperature: 0.72, maxTokens: 4096 }
+          );
+          content = groqResult.text;
+          provider = groqResult.provider;
+          model = groqResult.model;
+        }
       }
     }
     // ── SEM FICHEIROS ──
     else {
-      if (provider === "openrouter") {
-        content = await callOpenRouterMessages(messages, { model: data.model, system: CHAT_SYSTEM, temperature: 0.72, maxTokens: 4096 });
-      } else if (provider === "gemini") {
-        content = await callGeminiVision(messages, [], { model: data.model, system: CHAT_SYSTEM, temperature: 0.72, maxTokens: 4096 });
-      } else {
-        content = await callGroqMessages(messages, { model: data.model, system: CHAT_SYSTEM, temperature: 0.72, maxTokens: 4096 });
+      try {
+        const textResult = await generateContent(messages, {
+          provider, model: data.model, capability: "text",
+          system: CHAT_SYSTEM, temperature: 0.72, maxTokens: 4096,
+        });
+        content = textResult.text;
+        provider = textResult.provider;
+        model = textResult.model;
+      } catch (err) {
+        console.warn("[Chat] generateContent falhou:", err.message);
+      }
+
+      if (!content) {
+        throw new Error("Todos os provedores de IA estão indisponíveis. Tenta novamente em alguns minutos.");
       }
     }
 
@@ -173,14 +193,13 @@ export async function POST(request) {
 
     // ── GUARDAR NO SUPABASE ──
     if (conversationId) {
-      const supabaseClient = await createClient();
       // Guardar mensagem do utilizador (última)
       const lastUserMsg = messages.filter(m => m.role === "user").pop();
       if (lastUserMsg) {
-        await saveMessage(supabaseClient, conversationId, "user", lastUserMsg.content);
+        await saveMessage(conversationId, "user", lastUserMsg.content);
       }
       // Guardar resposta da IA
-      await saveMessage(supabaseClient, conversationId, "assistant", content, {
+      await saveMessage(conversationId, "assistant", content, {
         model, provider, latencyMs,
       });
     }

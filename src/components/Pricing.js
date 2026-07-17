@@ -150,18 +150,25 @@ export default function Pricing() {
           top: -12px;
           left: 50%;
           transform: translateX(-50%);
-          background: var(--gradient-text);
-          color: var(--text-main);
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: saturate(180%) blur(16px);
+          -webkit-backdrop-filter: saturate(180%) blur(16px);
+          border: 1px solid var(--glass-border);
+          border-top-color: rgba(255, 255, 255, 0.3);
+          border-left-color: rgba(255, 255, 255, 0.2);
+          color: var(--gold-400);
           font-weight: 800;
           font-size: var(--fs-sm);
           padding: 4px 16px;
           border-radius: var(--radius-full);
           white-space: nowrap;
-          box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
+          box-shadow: 0 4px 15px rgba(245, 158, 11, 0.15), inset 0 0 10px rgba(255, 255, 255, 0.05);
         }
         .pricing-card h3 {
-          font-size: var(--fs-2xl);
+          font-size: var(--fs-3xl);
+          font-family: var(--font-accent);
           margin-bottom: var(--space-4);
+          letter-spacing: 1px;
         }
         .price {
           display: flex;
@@ -176,7 +183,7 @@ export default function Pricing() {
         .amount {
           font-size: var(--fs-5xl);
           font-weight: 800;
-          font-family: var(--font-heading);
+          font-family: var(--font-accent);
           color: var(--text-main);
         }
         .period {
@@ -203,6 +210,22 @@ export default function Pricing() {
         }
         .w-100 {
           width: 100%;
+        }
+        .pricing-card.popular .btn.btn-primary {
+          background: rgba(255, 255, 255, 0.08);
+          backdrop-filter: saturate(180%) blur(16px);
+          -webkit-backdrop-filter: saturate(180%) blur(16px);
+          border: 1px solid var(--glass-border);
+          border-top-color: rgba(255, 255, 255, 0.2);
+          border-left-color: rgba(255, 255, 255, 0.1);
+          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3), inset 0 0 10px rgba(255,255,255,0.05);
+          color: var(--text-main);
+          transition: all 0.3s ease;
+        }
+        .pricing-card.popular .btn.btn-primary:hover {
+          background: rgba(255, 255, 255, 0.12);
+          box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.4), inset 0 0 15px rgba(255,255,255,0.1);
+          transform: translateY(-2px);
         }
       `}</style>
     </section>

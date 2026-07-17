@@ -104,7 +104,7 @@ Gera o conteúdo estruturado para uma apresentação de ${numSlides} slides sobr
 Estilo: ${style || "académico visual"}
 
 ## CONTRATO DE SAÍDA
-${SLIDE_SCHEMA_DESCRIPTION.replace(/\$\{"\{numSlides\}"\}/g, String(numSlides))}
+${SLIDE_SCHEMA_DESCRIPTION.replace(/\{numSlides\}/g, String(numSlides))}
 
 ## FEW-SHOT
 ${SLIDE_FEW_SHOT}

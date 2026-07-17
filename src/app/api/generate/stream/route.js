@@ -24,6 +24,12 @@ export async function POST(request) {
       nivel: sanitizeInput(raw.nivel),
       paginas: sanitizeInput(raw.paginas),
       requisitos: sanitizeInput(raw.requisitos),
+      nomes_alunos: sanitizeInput(raw.nomes_alunos || ''),
+      turma: sanitizeInput(raw.turma || ''),
+      professor: sanitizeInput(raw.professor || ''),
+      disciplina: sanitizeInput(raw.disciplina || ''),
+      escola: sanitizeInput(raw.escola || ''),
+      tipo_trabalho: sanitizeInput(raw.tipo_trabalho || 'universitario'),
     };
     const { valid, data, error: validationError } = validateSchema(generateSchema, sanitized);
     if (!valid) return validationError;
@@ -33,8 +39,9 @@ export async function POST(request) {
 
     // 4. Streaming
     const { stream, fullText } = await generateContentStream(prompt, {
-      provider: "openrouter",
-      model: "meta-llama/llama-3.3-70b-instruct:free",
+      provider: "groq",
+      model: "llama-3.3-70b-versatile",
+      capability: "text",
       system: "Es um diretor académico da Eduka. Usa pesquisa e exemplos reais quando disponíveis; se não houver certeza, marca como a confirmar.",
       temperature: 0.62,
       maxTokens: 8192,
@@ -43,14 +50,14 @@ export async function POST(request) {
     console.log("[Generate Stream] Iniciado:", { user: user.id });
 
     // Retornar como SSE
-    return new Response(stream, {
+    return withRateLimitHeaders(new Response(stream, {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
         "X-Accel-Buffering": "no",
       },
-    });
+    }), rateLimit);
   } catch (error) {
     console.error("[API /generate/stream] Erro:", error);
     return NextResponse.json(

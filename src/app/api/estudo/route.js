@@ -19,7 +19,7 @@ export async function POST(request) {
       timeframe: sanitizeInput(raw.timeframe),
       course: sanitizeInput(raw.course),
       difficulty: sanitizeInput(raw.difficulty),
-      model: raw.model || "meta-llama/llama-3.3-70b-instruct:free",
+      model: raw.model || "nvidia/nemotron-3-ultra-550b-a55b:free",
     };
     const { valid, data, error: validationError } = validateSchema(estudoSchema, sanitized);
     if (!valid) return validationError;

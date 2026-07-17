@@ -78,15 +78,22 @@ export async function POST(request) {
       nivel: sanitizeInput(raw.nivel),
       paginas: sanitizeInput(raw.paginas),
       requisitos: sanitizeInput(raw.requisitos),
+      // Campos escolares
+      nomes_alunos: sanitizeInput(raw.nomes_alunos),
+      turma: sanitizeInput(raw.turma),
+      professor: sanitizeInput(raw.professor),
+      disciplina: sanitizeInput(raw.disciplina),
+      escola: sanitizeInput(raw.escola),
+      tipo_trabalho: raw.tipo_trabalho || 'universitario',
     };
     const { valid, data, error: validationError } = validateSchema(generateSchema, sanitized);
     if (!valid) return validationError;
 
-    // 3. Gerar conteúdo
+    // 3. Gerar conteúdo - priorizar Groq para velocidade
     const prompt = buildWorkPrompt(data);
     const result = await generateContent(prompt, {
-      provider: "openrouter",
-      model: "meta-llama/llama-3.3-70b-instruct:free",
+      provider: "groq",
+      model: "llama-3.3-70b-versatile",
       capability: "text",
       system: WORK_SYSTEM,
       temperature: 0.62,
@@ -131,7 +138,7 @@ Retorna o trabalho completo em Markdown.
       try {
         const result2 = await generateContent(expandPrompt, {
           provider: "openrouter",
-          model: "meta-llama/llama-3.3-70b-instruct:free",
+          model: "nvidia/nemotron-3-ultra-550b-a55b:free",
           capability: "text",
           temperature: 0.62,
           maxTokens: 8192,

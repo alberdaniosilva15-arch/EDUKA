@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { authenticateAndRateLimit } from "@/lib/api-helpers";
-import { generateContent, callVision } from "@/lib/ai/provider-router";
+import { generateContent, callVision } from "@/lib/ai";
 import { buildSystemWithPersona } from "@/lib/ai/systems/base";
 
 const PDF_PERSONA = `
@@ -51,8 +51,6 @@ Responde SEMPRE neste formato:
 - Pergunta 3?
 `.trim();
 
-const API_TIMEOUT_MS = 60000;
-
 export async function POST(request) {
   const startTime = Date.now();
 
@@ -79,9 +77,9 @@ export async function POST(request) {
     }
 
     let responseText;
-    let model = "gemini-2.0-flash";
+    let model = "google/gemma-4-26b-a4b-it:free";
 
-    // Se tem imagens (paginas do PDF renderizadas), usa visao
+    // Se tem imagens (paginas do PDF renderizadas), usa visao via OpenRouter
     if (images && images.length > 0) {
       const imageData = images.map((img) => {
         const base64Data = typeof img === "string"
@@ -90,18 +88,17 @@ export async function POST(request) {
         return { inlineData: { mimeType: "image/jpeg", data: base64Data } };
       });
 
-      // Gemini vision directamente (PDFs so funcionam com Gemini)
-      const { callGeminiVision } = await import("@/lib/ai-provider");
-      responseText = await callGeminiVision(
+      responseText = await callVision(
         [{ role: "user", content: prompt }],
         imageData,
-        { system: PDF_SYSTEM, temperature: 0.4, maxTokens: 8192 }
+        { model: "google/gemma-4-26b-a4b-it:free", system: PDF_SYSTEM, temperature: 0.4, maxTokens: 8192 }
       );
     } else {
       // Apenas texto — usa provider central com fallback
       const result = await generateContent(prompt, {
-        provider: "gemini",
-        capability: "pdf",
+        provider: "groq",
+        model: "llama-3.3-70b-versatile",
+        capability: "text",
         system: PDF_SYSTEM,
         temperature: 0.4,
         maxTokens: 8192,

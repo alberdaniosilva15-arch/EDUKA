@@ -16,18 +16,6 @@ export const GROQ_FREE_MODELS = [
     shortName: "Llama 70B",
     description: "Mais forte para explicacoes, trabalhos e raciocinio longo.",
   },
-  {
-    id: "openai/gpt-oss-20b",
-    name: "GPT-OSS 20B",
-    shortName: "GPT-OSS 20B",
-    description: "Equilibrado, bom para conversa geral e codigo simples.",
-  },
-  {
-    id: "openai/gpt-oss-120b",
-    name: "GPT-OSS 120B",
-    shortName: "GPT-OSS 120B",
-    description: "Modelo maior para respostas mais profundas quando houver quota.",
-  },
 ];
 
 export const GROQ_FREE_MODEL_IDS = GROQ_FREE_MODELS.map((model) => model.id);

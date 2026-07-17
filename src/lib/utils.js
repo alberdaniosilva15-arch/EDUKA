@@ -27,10 +27,19 @@ export function sanitizeHtml(html) {
  */
 export function sanitizeInput(input) {
   if (typeof input !== 'string') return input;
+  // NOTA: A defesa primária contra prompt injection é estrutural —
+  // provider-router.js separa system de user. Este filtro é complementar.
   return input
-    .replace(/\n{3,}/g, '\n\n')     // Limita quebras de linha consecutivas
+    .replace(/<\|im_start\|>/g, '')   // ChatGPT/claude chat template
+    .replace(/<\|im_end\|>/g, '')
+    .replace(/\[INST\]/g, '')         // Llama instruction markers
+    .replace(/\[\/INST\]/g, '')
+    .replace(/<\|system\|>/g, '')     // Role injection markers
+    .replace(/<\|user\|>/g, '')
+    .replace(/<\|assistant\|>/g, '')
+    .replace(/\n{3,}/g, '\n\n')      // Limita quebras de linha consecutivas
     .trim()
-    .slice(0, 5000);                // Limita tamanho máximo
+    .slice(0, 5000);
 }
 
 /**

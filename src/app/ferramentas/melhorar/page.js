@@ -63,7 +63,7 @@ export default function MelhorarPage() {
             </Link>
             <h1>
               ✨ Melhorador de{" "}
-              <span className="gradient-text">Texto</span>
+              <span className="shader-text shader-yellow">Texto</span>
             </h1>
             <p>
               Cola o teu texto e a IA melhora a gramática, clareza e

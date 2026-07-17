@@ -1,25 +1,11 @@
 /**
  * Eduka — Model Registry
- * Unico ponto de verdade para modelos, providers, capacidades e politica de custo.
- * Substitui a fragmentacao entre free-models.js, groq-models.js e openrouter-models.js.
+ * Apenas modelos FREE que funcionam.
  */
 
 // ─── Provider metadata ─────────────────────────────────────
 
 export const PROVIDERS = {
-  openrouter: {
-    id: "openrouter",
-    name: "OpenRouter",
-    baseUrl: "https://openrouter.ai/api/v1/chat/completions",
-    defaultModel: "meta-llama/llama-3.3-70b-instruct:free",
-    headers: (apiKey) => ({
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-      "HTTP-Referer": "https://eduka.ao",
-      "X-Title": "Eduka IA",
-    }),
-    envKey: "OPENROUTER_API_KEY",
-  },
   groq: {
     id: "groq",
     name: "Groq",
@@ -31,75 +17,99 @@ export const PROVIDERS = {
     }),
     envKey: "GROQ_API_KEY",
   },
-  gemini: {
-    id: "gemini",
-    name: "Gemini",
-    baseUrl: "https://generativelanguage.googleapis.com/v1beta/models",
-    defaultModel: "gemini-2.0-flash",
-    headers: () => ({ "Content-Type": "application/json" }),
-    envKey: "GEMINI_API_KEY",
-    allowlist: ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.5-pro"],
+  opencode: {
+    id: "opencode",
+    name: "OpenCode",
+    baseUrl: "https://opencode.ai/zen/v1/chat/completions",
+    defaultModel: "deepseek-v4-flash-free",
+    headers: (apiKey) => ({
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    }),
+    envKey: "OPENCODE_API_KEY",
   },
   nvidia: {
     id: "nvidia",
     name: "NVIDIA",
     baseUrl: "https://integrate.api.nvidia.com/v1/chat/completions",
-    defaultModel: "nvidia/nemotron-3-super-120b-a12b",
+    defaultModel: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
     headers: (apiKey) => ({
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     }),
     envKey: "NVIDIA_API_KEY",
   },
+  openrouter: {
+    id: "openrouter",
+    name: "OpenRouter",
+    baseUrl: "https://openrouter.ai/api/v1/chat/completions",
+    defaultModel: "nvidia/nemotron-3-ultra-550b-a55b:free",
+    headers: (apiKey) => ({
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      "HTTP-Referer": "https://eduka.ao",
+      "X-Title": "Eduka IA",
+    }),
+    envKey: "OPENROUTER_API_KEY",
+  },
 };
 
 // ─── Model catalog ─────────────────────────────────────────
 
 export const MODELS = [
-  // Groq — rapidos
+  // Groq — rapidos e estaveis
+  { id: "llama-3.3-70b-versatile", provider: "groq", speed: "rapido", vision: false, capabilities: ["text", "json"] },
   { id: "llama-3.1-8b-instant", provider: "groq", speed: "rapido", vision: false, capabilities: ["text"] },
-  { id: "llama-3.3-70b-versatile", provider: "groq", speed: "rapido", vision: false, capabilities: ["text"] },
 
-  // OpenRouter — eficientes
-  { id: "meta-llama/llama-3.3-70b-instruct:free", provider: "openrouter", speed: "eficiente", vision: false, capabilities: ["text", "json"] },
-  { id: "openai/gpt-oss-120b:free", provider: "openrouter", speed: "eficiente", vision: false, capabilities: ["text", "json"] },
-  { id: "openai/gpt-oss-20b:free", provider: "openrouter", speed: "rapido", vision: false, capabilities: ["text"] },
-  { id: "nvidia/nemotron-3-super-120b-a12b:free", provider: "openrouter", speed: "eficiente", vision: false, capabilities: ["text", "json"] },
-  { id: "qwen/qwen3-coder:free", provider: "openrouter", speed: "eficiente", vision: false, capabilities: ["text", "json", "code"] },
-  { id: "google/gemma-4-31b-it:free", provider: "openrouter", speed: "eficiente", vision: true, capabilities: ["text", "vision"] },
-  { id: "google/gemma-4-26b-a4b-it:free", provider: "openrouter", speed: "eficiente", vision: true, capabilities: ["text", "vision"] },
+  // OpenCode — free models
+  { id: "deepseek-v4-flash-free", provider: "opencode", speed: "rapido", vision: false, capabilities: ["text", "json", "code"] },
+  { id: "mimo-v2.5-free", provider: "opencode", speed: "rapido", vision: false, capabilities: ["text", "code"] },
+  { id: "hy3-free", provider: "opencode", speed: "eficiente", vision: false, capabilities: ["text", "json"] },
+  { id: "nemotron-3-ultra-free", provider: "opencode", speed: "eficiente", vision: false, capabilities: ["text", "json"] },
+  { id: "north-mini-code-free", provider: "opencode", speed: "rapido", vision: false, capabilities: ["text", "code"] },
 
-  // NVIDIA — direto
+  // NVIDIA — free models (API direta)
   { id: "nvidia/llama-3.3-nemotron-super-49b-v1.5", provider: "nvidia", speed: "eficiente", vision: false, capabilities: ["text"] },
   { id: "nvidia/nemotron-3-super-120b-a12b", provider: "nvidia", speed: "eficiente", vision: false, capabilities: ["text"] },
 
-  // Gemini
-  { id: "gemini-2.0-flash", provider: "gemini", speed: "eficiente", vision: true, capabilities: ["text", "vision", "pdf"] },
-  { id: "gemini-2.5-flash", provider: "gemini", speed: "eficiente", vision: true, capabilities: ["text", "vision", "pdf"] },
-  { id: "gemini-2.5-pro", provider: "gemini", speed: "lento", vision: true, capabilities: ["text", "vision", "pdf"] },
+  // OpenRouter — free models que funcionam
+  { id: "nvidia/nemotron-3-ultra-550b-a55b:free", provider: "openrouter", speed: "eficiente", vision: false, capabilities: ["text", "json"] },
+  { id: "google/gemma-4-26b-a4b-it:free", provider: "openrouter", speed: "eficiente", vision: true, capabilities: ["text", "vision"] },
+  { id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", provider: "openrouter", speed: "eficiente", vision: false, capabilities: ["text", "json"] },
+  { id: "nvidia/nemotron-3-nano-30b-a3b:free", provider: "openrouter", speed: "rapido", vision: false, capabilities: ["text"] },
+  { id: "openai/gpt-oss-20b:free", provider: "openrouter", speed: "rapido", vision: false, capabilities: ["text"] },
+  { id: "nvidia/nemotron-nano-9b-v2:free", provider: "openrouter", speed: "rapido", vision: false, capabilities: ["text"] },
+  { id: "nvidia/nemotron-nano-12b-v2-vl:free", provider: "openrouter", speed: "rapido", vision: true, capabilities: ["text", "vision"] },
 ];
 
-// ─── Fallback chains per capability ────────────────────────
+// ─── Fallback chains ───────────────────────────────────────
 
 const FALLBACK_CHAINS = {
   text: [
-    { provider: "openrouter", model: "meta-llama/llama-3.3-70b-instruct:free" },
     { provider: "groq", model: "llama-3.3-70b-versatile" },
-    { provider: "nvidia", model: "nvidia/nemotron-3-super-120b-a12b" },
-    { provider: "gemini", model: "gemini-2.0-flash" },
+    { provider: "opencode", model: "deepseek-v4-flash-free" },
+    { provider: "nvidia", model: "nvidia/llama-3.3-nemotron-super-49b-v1.5" },
+    { provider: "openrouter", model: "nvidia/nemotron-3-ultra-550b-a55b:free" },
+    { provider: "opencode", model: "nemotron-3-ultra-free" },
   ],
   json: [
-    { provider: "openrouter", model: "meta-llama/llama-3.3-70b-instruct:free" },
-    { provider: "openrouter", model: "nvidia/nemotron-3-super-120b-a12b:free" },
     { provider: "groq", model: "llama-3.3-70b-versatile" },
-    { provider: "gemini", model: "gemini-2.0-flash" },
+    { provider: "opencode", model: "deepseek-v4-flash-free" },
+    { provider: "nvidia", model: "nvidia/nemotron-3-super-120b-a12b" },
+    { provider: "opencode", model: "hy3-free" },
   ],
   vision: [
-    { provider: "gemini", model: "gemini-2.0-flash" },
-    { provider: "openrouter", model: "google/gemma-4-31b-it:free" },
+    { provider: "openrouter", model: "google/gemma-4-26b-a4b-it:free" },
+    { provider: "openrouter", model: "nvidia/nemotron-nano-12b-v2-vl:free" },
   ],
   pdf: [
-    { provider: "gemini", model: "gemini-2.0-flash" },
+    { provider: "openrouter", model: "google/gemma-4-26b-a4b-it:free" },
+  ],
+  code: [
+    { provider: "opencode", model: "mimo-v2.5-free" },
+    { provider: "opencode", model: "north-mini-code-free" },
+    { provider: "opencode", model: "deepseek-v4-flash-free" },
+    { provider: "groq", model: "llama-3.3-70b-versatile" },
   ],
 };
 
@@ -111,11 +121,11 @@ export function getModelById(id) {
 
 export function getProviderForModel(modelId) {
   const model = getModelById(modelId);
-  return model?.provider || "openrouter";
+  return model?.provider || "groq";
 }
 
 export function getProviderConfig(providerId) {
-  return PROVIDERS[providerId] || PROVIDERS.openrouter;
+  return PROVIDERS[providerId] || PROVIDERS.groq;
 }
 
 export function isVisionModel(modelId) {
@@ -123,13 +133,9 @@ export function isVisionModel(modelId) {
 }
 
 export function getDefaultModelForProvider(providerId) {
-  return PROVIDERS[providerId]?.defaultModel || PROVIDERS.openrouter.defaultModel;
+  return PROVIDERS[providerId]?.defaultModel || PROVIDERS.groq.defaultModel;
 }
 
-/**
- * Retorna a cadeia de fallback para uma capability, começando pelo provider preferido.
- * Nunca usa modelos incompativeis entre providers.
- */
 export function getFallbackChain(preferredProvider, capability = "text") {
   const chain = FALLBACK_CHAINS[capability] || FALLBACK_CHAINS.text;
   const preferred = chain.filter((c) => c.provider === preferredProvider);
@@ -137,18 +143,12 @@ export function getFallbackChain(preferredProvider, capability = "text") {
   return [...preferred, ...others];
 }
 
-/**
- * Resolve o modelo efetivo: valida se existe no provider, senao usa o default.
- */
 export function resolveModel(modelId, providerId) {
   const model = getModelById(modelId);
   if (model && model.provider === providerId) return modelId;
   return getDefaultModelForProvider(providerId);
 }
 
-/**
- * Cost weight por rota (para rate limit ponderado).
- */
 export const ROUTE_COST = {
   chat: 1,
   explain: 1,
@@ -159,7 +159,6 @@ export const ROUTE_COST = {
   pdf: 3,
 };
 
-// Re-exports para compatibilidade com codigo existente
 export const FREE_MODELS = MODELS.map((m) => ({
   id: m.id,
   name: m.id.split("/").pop().split(":")[0],

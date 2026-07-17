@@ -24,7 +24,9 @@ export async function POST(request) {
     // 3. Gerar conteúdo
     const prompt = buildExplainPrompt(data);
     const result = await generateContent(prompt, {
-      provider: "openrouter",
+      provider: "groq",
+      model: "llama-3.3-70b-versatile",
+      capability: "text",
       system: EXPLAIN_SYSTEM,
       temperature: 0.65,
       maxTokens: 4096,

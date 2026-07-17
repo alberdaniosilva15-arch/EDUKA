@@ -479,13 +479,16 @@ function addSummaryLayout(pres, data, current, total, index) {
 
 function normaliseSlide(slide, index, total) {
   const layout = cleanText(slide.layout || (index === 0 ? "cover" : index === total - 1 ? "summary" : "visual-right"));
+  // Map AI output fields (bullets/speakerNotes) to PPTX fields (content/notes)
+  const content = asArray(slide.content || slide.bullets).slice(0, 5);
+  const notes = cleanText(slide.notes || slide.speakerNotes);
   return {
     ...slide,
     title: cleanText(slide.title, index === 0 ? "Apresentacao" : `Slide ${index + 1}`),
-    subtitle: cleanText(slide.subtitle),
+    subtitle: cleanText(slide.subtitle || slide.keyMessage || ""),
     layout,
-    content: asArray(slide.content).slice(0, 5),
-    notes: cleanText(slide.notes),
+    content,
+    notes,
     visual: slide.visual || {
       type: "diagram",
       prompt: slide.title,
@@ -493,7 +496,7 @@ function normaliseSlide(slide, index, total) {
       caption: slide.title,
       alt: slide.title,
     },
-    realExample: slide.realExample || null,
+    realExample: slide.realExample || (slide.evidence ? { label: slide.evidence.type, takeaway: slide.evidence.text } : null),
   };
 }
 

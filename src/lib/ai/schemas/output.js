@@ -58,6 +58,7 @@ export const workOutputSchema = z.object({
  * Não regenera — apenas corrige campos ausentes ou malformados.
  */
 export function repairSlide(slide, index) {
+  if (!slide || typeof slide !== "object") slide = {};
   return {
     title: slide.title || `Slide ${index + 1}`,
     purpose: slide.purpose || "Compreender o conteúdo deste slide",
@@ -82,7 +83,16 @@ export function repairSlide(slide, index) {
  * Repara um array de slides: garante contagem e validade de cada slide.
  */
 export function repairSlides(slides, expectedCount) {
-  let repaired = slides.map(repairSlide);
+  let slidesArray = [];
+  if (Array.isArray(slides)) {
+    slidesArray = slides;
+  } else if (slides && Array.isArray(slides.slides)) {
+    slidesArray = slides.slides;
+  } else if (slides && typeof slides === "object") {
+    slidesArray = [slides];
+  }
+
+  let repaired = slidesArray.map((s, i) => repairSlide(s, i));
 
   // Truncar se exceder
   if (repaired.length > expectedCount) {

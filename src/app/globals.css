@@ -57,17 +57,18 @@
   --info: var(--cyan-500);
 
   /* Gradients */
-  --gradient-primary: linear-gradient(135deg, var(--blue-700) 0%, var(--blue-500) 50%, var(--cyan-500) 100%);
+  --gradient-primary: linear-gradient(140deg, var(--blue-700) 0%, var(--blue-500) 50%, var(--cyan-500) 100%);
   --gradient-hero: linear-gradient(135deg, var(--slate-950) 0%, var(--blue-900) 40%, var(--slate-900) 100%);
   --gradient-card: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
   --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
-  --gradient-button: linear-gradient(135deg, var(--blue-600) 0%, var(--blue-500) 50%, var(--cyan-500) 100%);
+  --gradient-button: linear-gradient(140deg, var(--blue-600) 0%, var(--blue-500) 50%, var(--cyan-500) 100%);
   --gradient-gold: linear-gradient(135deg, var(--gold-500) 0%, var(--gold-300) 100%);
-  --gradient-text: linear-gradient(135deg, var(--blue-300) 0%, var(--cyan-400) 50%, var(--gold-400) 100%);
+  --gradient-text: linear-gradient(140deg, var(--blue-300) 0%, var(--cyan-400) 50%, var(--gold-400) 100%);
 
   /* Typography */
   --font-heading: 'Outfit', sans-serif;
-  --font-body: 'Inter', sans-serif;
+  --font-body: 'Sora', sans-serif;
+  --font-accent: 'Script MT Bold', 'Sora', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
   --fs-xs: 0.75rem;
@@ -108,10 +109,10 @@
   --border-color: rgba(255, 255, 255, 0.1);
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 2px rgba(10, 30, 94, 0.14);
+  --shadow-md: 0 4px 8px -1px rgba(10, 30, 94, 0.22), 0 2px 4px -2px rgba(10, 30, 94, 0.12);
+  --shadow-lg: 0 10px 20px -3px rgba(10, 30, 94, 0.28), 0 4px 8px -4px rgba(10, 30, 94, 0.16);
+  --shadow-xl: 0 20px 30px -5px rgba(10, 30, 94, 0.35), 0 8px 12px -6px rgba(10, 30, 94, 0.18);
   --shadow-glow-blue: 0 0 30px rgba(37, 99, 235, 0.3);
   --shadow-glow-cyan: 0 0 30px rgba(6, 182, 212, 0.3);
   --shadow-glow-gold: 0 0 30px rgba(245, 158, 11, 0.3);
@@ -227,7 +228,10 @@ a {
 }
 
 .gradient-text {
-  color: var(--blue-400);
+  background: var(--gradient-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .section-title {
@@ -436,6 +440,41 @@ a {
   background: rgba(16, 185, 129, 0.15);
   color: var(--success);
   border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+/* ---------- Text Shaders ---------- */
+.shader-text {
+  background-size: 200% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: shine 3s linear infinite;
+  display: inline-block;
+}
+
+.shader-red {
+  background-image: linear-gradient(to right, #ef4444 0%, #fca5a5 20%, #ef4444 40%, #ef4444 100%);
+}
+
+.shader-yellow {
+  background-image: linear-gradient(to right, #f59e0b 0%, #fde68a 20%, #f59e0b 40%, #f59e0b 100%);
+}
+
+.shader-black {
+  background-image: linear-gradient(to right, #1e293b 0%, #94a3b8 20%, #1e293b 40%, #1e293b 100%);
+}
+
+[data-theme='light'] .shader-black {
+  background-image: linear-gradient(to right, #0f172a 0%, #64748b 20%, #0f172a 40%, #0f172a 100%);
+}
+
+@keyframes shine {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
 }
 
 /* ---------- Animations ---------- */
@@ -1098,7 +1137,7 @@ a {
   height: 320px;
   transform: translate(-50%, -50%) rotateX(65deg);
   animation: ringRotate 12s linear infinite;
-  border-color: rgba(37, 99, 235, 0.12);
+  border-color: rgba(37, 99, 235, 0.14);
 }
 
 .orb-ring.ring-2 {
@@ -1106,7 +1145,7 @@ a {
   height: 400px;
   transform: translate(-50%, -50%) rotateX(65deg) rotateZ(60deg);
   animation: ringRotate 18s linear infinite reverse;
-  border-color: rgba(6, 182, 212, 0.08);
+  border-color: rgba(6, 182, 212, 0.09);
 }
 
 .orb-ring.ring-3 {
@@ -1114,7 +1153,7 @@ a {
   height: 460px;
   transform: translate(-50%, -50%) rotateX(65deg) rotateZ(120deg);
   animation: ringRotate 24s linear infinite;
-  border-color: rgba(251, 191, 36, 0.05);
+  border-color: rgba(251, 191, 36, 0.04);
   border-style: dashed;
 }
 
@@ -1259,7 +1298,7 @@ a {
 }
 
 .feature-tag.coming-soon {
-  color: var(--gold-400);
+  color: var(--cyan-400);
 }
 
 /* ---------- How It Works ---------- */
@@ -1796,7 +1835,7 @@ a {
   background-image: 
     radial-gradient(circle at 15% 50%, rgba(37, 99, 235, 0.35) 0%, transparent 40%),
     radial-gradient(circle at 85% 30%, rgba(6, 182, 212, 0.35) 0%, transparent 40%),
-    radial-gradient(circle at 50% 80%, rgba(139, 92, 246, 0.25) 0%, transparent 50%);
+    radial-gradient(circle at 50% 80%, rgba(245, 158, 11, 0.18) 0%, transparent 50%);
   position: relative;
   overflow: hidden;
   animation: bgPulse 10s ease-in-out infinite alternate;
@@ -2196,3 +2235,41 @@ a {
   border: 1px solid rgba(0, 0, 0, 0.15) !important;
   color: var(--text-main) !important;
 }
+
+/* === Animated Text Shaders === */
+.shader-red {
+  background: linear-gradient(90deg, #ef4444 0%, #fca5a5 25%, #b91c1c 50%, #fca5a5 75%, #ef4444 100%);
+  background-size: 200% auto;
+  color: transparent !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  animation: shader-shine 3s linear infinite;
+  display: inline-block;
+}
+
+.shader-yellow {
+  background: linear-gradient(90deg, #eab308 0%, #fef08a 25%, #ca8a04 50%, #fef08a 75%, #eab308 100%);
+  background-size: 200% auto;
+  color: transparent !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  animation: shader-shine 3s linear infinite;
+  display: inline-block;
+}
+
+.shader-black {
+  background: linear-gradient(90deg, #475569 0%, #cbd5e1 25%, #0f172a 50%, #cbd5e1 75%, #475569 100%);
+  background-size: 200% auto;
+  color: transparent !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  animation: shader-shine 3s linear infinite;
+  display: inline-block;
+}
+
+@keyframes shader-shine {
+  to {
+    background-position: -200% center;
+  }
+}
+

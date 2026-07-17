@@ -63,7 +63,7 @@ export default function ExplicarPage() {
             </Link>
             <h1>
               💡 Explicação{" "}
-              <span className="gradient-text">Simples</span>
+              <span className="shader-text shader-yellow">Simples</span>
             </h1>
             <p>
               Insere um tema complexo e a IA explica de forma clara, com

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { authenticateAndRateLimit, validateSchema } from "@/lib/api-helpers";
+import { authenticateAndRateLimit, validateSchema, withRateLimitHeaders } from "@/lib/api-helpers";
 import { chatSchema } from "@/lib/api-schemas";
 import { FREE_MODELS, isVisionModel, getProviderForModel } from "@/lib/free-models";
 import { CHAT_SYSTEM } from "@/lib/ai/systems/chat";
@@ -56,14 +56,14 @@ export async function POST(request) {
 
     console.log("[Chat Stream] Iniciado:", { user: user.id, model: data.model });
 
-    return new Response(stream, {
+    return withRateLimitHeaders(new Response(stream, {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
         "X-Accel-Buffering": "no",
       },
-    });
+    }), rateLimit);
   } catch (error) {
     console.error("[API /chat/stream] Erro:", error);
     return NextResponse.json({ error: error.message || "Erro ao conversar com a IA." }, { status: 500 });

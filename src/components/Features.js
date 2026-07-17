@@ -154,6 +154,11 @@ export default function Features() {
           position: relative;
           z-index: 1;
         }
+        h2.section-title {
+          font-family: var(--font-accent);
+          font-size: clamp(2.5rem, 5vw, 4rem);
+          font-weight: 700;
+        }
         .features-grid {
           display: grid;
           grid-template-columns: 1fr;

@@ -11,6 +11,7 @@
  */
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // ─── Rate Limiting ponderado por rota ──────────────────────
 const RL_MAX_CREDITS = 30;         // créditos por janela
@@ -21,6 +22,7 @@ const ROUTE_COSTS = {
   chat: 1,
   explain: 1,
   improve: 1,
+  curriculo: 2,
   estudo: 2,
   generate: 3,
   slides: 3,
@@ -37,29 +39,25 @@ function detectRoute(pathname) {
 
 /**
  * Verifica rate limit do user com custo ponderado.
- * Usa Supabase RPC para incremento atómico — sem race conditions.
+ * Usa Supabase RPC (increment_rate_limit) para incremento atómico — sem race conditions.
+ * Requer que a migration 003_rate_limit_rpc.sql foi executada no Supabase.
  */
-async function checkUserRateLimit(supabase, userId, route) {
-  const now = new Date();
-  const windowStart = new Date(now.getTime() - RL_WINDOW_MS);
+async function checkUserRateLimit(userId, route) {
+  const adminDb = createAdminClient();
   const cost = ROUTE_COSTS[route] || 1;
 
-  // Ler entrada actual
-  const { data: entry, error: readError } = await supabase
-    .from("rate_limits")
-    .select("credits_used, window_start")
-    .eq("user_id", userId)
+  const { data: rpcResult, error: rpcError } = await adminDb
+    .rpc("increment_rate_limit", {
+      p_user_id: userId,
+      p_cost: cost,
+      p_window_ms: RL_WINDOW_MS,
+    })
     .single();
 
-  // Se não existe ou janela expirou → reset
-  if (readError || !entry || new Date(entry.window_start) < windowStart) {
-    const { error: upsertError } = await supabase.from("rate_limits").upsert(
-      { user_id: userId, credits_used: cost, window_start: now.toISOString() },
-      { onConflict: "user_id" }
-    );
-    if (upsertError) {
-      console.warn("[RateLimit] Upsert error:", upsertError.message);
-    }
+  if (rpcError) {
+    console.error("[RateLimit] RPC increment_rate_limit FALHOU — rate limit desactivado:", rpcError.message);
+    // Fallback: permitir se RPC falhar (não bloquear utilizadores por erro de infra)
+    // O cliente NÃO deve saber que o rate limit está desactivado — responde normalmente.
     return {
       allowed: true,
       creditsUsed: cost,
@@ -69,34 +67,13 @@ async function checkUserRateLimit(supabase, userId, route) {
     };
   }
 
-  const newTotal = entry.credits_used + cost;
+  const resetIn = RL_WINDOW_MS - (Date.now() - new Date(rpcResult.window_start).getTime());
 
-  if (newTotal > RL_MAX_CREDITS) {
-    const resetIn = RL_WINDOW_MS - (now.getTime() - new Date(entry.window_start).getTime());
-    return {
-      allowed: false,
-      creditsUsed: entry.credits_used,
-      creditsRemaining: 0,
-      resetIn,
-      cost,
-    };
-  }
-
-  // Incrementar créditos
-  const { error: updateError } = await supabase
-    .from("rate_limits")
-    .update({ credits_used: newTotal })
-    .eq("user_id", userId);
-  if (updateError) {
-    console.warn("[RateLimit] Update error:", updateError.message);
-  }
-
-  const resetIn = RL_WINDOW_MS - (now.getTime() - new Date(entry.window_start).getTime());
   return {
-    allowed: true,
-    creditsUsed: newTotal,
-    creditsRemaining: RL_MAX_CREDITS - newTotal,
-    resetIn,
+    allowed: rpcResult.allowed,
+    creditsUsed: rpcResult.credits_used,
+    creditsRemaining: RL_MAX_CREDITS - rpcResult.credits_used,
+    resetIn: Math.max(resetIn, 0),
     cost,
   };
 }
@@ -124,7 +101,7 @@ export async function authenticateAndRateLimit(request) {
   const route = detectRoute(request.nextUrl?.pathname || "");
 
   // Rate limit com custo ponderado
-  const rl = await checkUserRateLimit(supabase, user.id, route);
+  const rl = await checkUserRateLimit(user.id, route);
   if (!rl.allowed) {
     const minutes = Math.ceil(rl.resetIn / 60000);
     return {

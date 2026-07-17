@@ -38,6 +38,38 @@ export const generateSchema = z.object({
     .max(MAX_FIELD, `Requisitos não pode exceder ${MAX_FIELD} caracteres.`)
     .optional()
     .default(''),
+  // Campos escolares
+  nomes_alunos: z
+    .string()
+    .max(MAX_FIELD, `Nomes não pode exceder ${MAX_FIELD} caracteres.`)
+    .optional()
+    .default(''),
+  turma: z
+    .string()
+    .max(100, `Turma não pode exceder 100 caracteres.`)
+    .optional()
+    .default(''),
+  professor: z
+    .string()
+    .max(200, `Nome do professor não pode exceder 200 caracteres.`)
+    .optional()
+    .default(''),
+  disciplina: z
+    .string()
+    .max(200, `Disciplina não pode exceder 200 caracteres.`)
+    .optional()
+    .default(''),
+  escola: z
+    .string()
+    .max(300, `Nome da escola não pode exceder 300 caracteres.`)
+    .optional()
+    .default(''),
+  tipo_trabalho: z
+    .enum(['universitario', 'escolar', 'tecnico'], {
+      error_map: () => ({ message: "Tipo deve ser: universitario, escolar ou tecnico" })
+    })
+    .optional()
+    .default('universitario'),
 });
 
 // ─── /api/improve ────────────────────────────────────────────
@@ -90,7 +122,7 @@ export const slidesSchema = z.object({
     .string()
     .max(200)
     .optional()
-    .default('meta-llama/llama-3.3-70b-instruct:free'),
+    .default('nvidia/nemotron-3-ultra-550b-a55b:free'),
 });
 
 // ─── /api/estudo ─────────────────────────────────────────────
@@ -119,7 +151,7 @@ export const estudoSchema = z.object({
     .string()
     .max(200)
     .optional()
-    .default('meta-llama/llama-3.3-70b-instruct:free'),
+    .default('nvidia/nemotron-3-ultra-550b-a55b:free'),
 });
 
 // ─── /api/chat ───────────────────────────────────────────────
@@ -164,4 +196,40 @@ export const chatSchema = z.object({
     .max(MAX_FILES, `Máximo ${MAX_FILES} ficheiros.`)
     .optional()
     .default([]),
+});
+
+// ─── /api/curriculo ──────────────────────────────────────────
+export const curriculoSchema = z.object({
+  nome_completo: z
+    .string({ required_error: "Nome completo é obrigatório." })
+    .min(2, "Nome completo deve ter pelo menos 2 caracteres.")
+    .max(200, "Nome completo não pode exceder 200 caracteres.")
+    .trim(),
+  email: z.string().max(200).optional().default(''),
+  telefone: z.string().max(50).optional().default(''),
+  provincia: z.string().max(100).optional().default(''),
+  Linkedin: z.string().max(500).optional().default(''),
+  tipo_vaga: z.string().max(200).optional().default(''),
+  empresa_alvo: z.string().max(200).optional().default(''),
+  setor_empresa: z.string().max(200).optional().default(''),
+  objetivo_profissional: z
+    .string({ required_error: "Objetivo profissional é obrigatório." })
+    .min(5, "Objetivo profissional deve ter pelo menos 5 caracteres.")
+    .max(MAX_FIELD, `Objetivo profissional não pode exceder ${MAX_FIELD} caracteres.`)
+    .trim(),
+  nivel_educacao: z.string().max(100).optional().default(''),
+  formacao: z.string().max(300).optional().default(''),
+  instituicao: z.string().max(300).optional().default(''),
+  ano_conclusao: z.string().max(20).optional().default(''),
+  experiencia: z.string().max(MAX_FIELD).optional().default('Estudante'),
+  habilidades: z
+    .string({ required_error: "Habilidades/competências são obrigatórias." })
+    .min(3, "Habilidades deve ter pelo menos 3 caracteres.")
+    .max(MAX_FIELD, `Habilidades não pode exceder ${MAX_FIELD} caracteres.`)
+    .trim(),
+  idiomas: z.string().max(500).optional().default('Português (nativo)'),
+  cursos_complementares: z.string().max(MAX_FIELD).optional().default(''),
+  disponibilidade: z.string().max(200).optional().default('A combinar'),
+  pretensao_salarial: z.string().max(200).optional().default('A combinar'),
+  informacoes_adicionais: z.string().max(MAX_FIELD).optional().default(''),
 });

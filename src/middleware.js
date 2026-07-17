@@ -39,6 +39,13 @@ function checkRateLimit(key, type = 'general') {
   return { allowed: true, remaining: config.max - entry.count };
 }
 
+/**
+ * Obtém IP do cliente — LIMITAÇÃO CONHECIDA:
+ * x-forwarded-for e x-real-ip sao facilmente spoofaveis por atacantes.
+ * A defesa PRINCIPAL contra abuso e o rate limit por user_id (api-helpers.js),
+ * que e atomico e nao depende de headers. Este rate limit por IP e apenas
+ * uma camada extra pré-autenticação para reduzir abuso anónimo.
+ */
 function getClientIp(request) {
   return (
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
@@ -128,7 +135,25 @@ export async function middleware(request) {
     );
   }
 
-  // 6. Adicionar headers de resposta de segurança extras
+  // 6. CSRF Origin/Referer check para POSTs de API
+  // Exceção: /api/webhooks/* (webhooks de pagamento usam assinatura criptográfica, mais forte)
+  if (request.method === 'POST' && pathname.startsWith('/api/') && !pathname.startsWith('/api/webhooks/')) {
+    const origin = request.headers.get('origin');
+    const referer = request.headers.get('referer');
+    const allowedHost = new URL(request.url).host;
+
+    const isValidOrigin = origin && new URL(origin).host === allowedHost;
+    const isValidReferer = referer && new URL(referer).host === allowedHost;
+
+    if (!isValidOrigin && !isValidReferer) {
+      return NextResponse.json(
+        { error: 'Origem inválida.' },
+        { status: 403 }
+      );
+    }
+  }
+
+  // 7. Adicionar headers de resposta de segurança extras
   supabaseResponse.headers.set('X-Request-ID', crypto.randomUUID());
 
   return supabaseResponse;

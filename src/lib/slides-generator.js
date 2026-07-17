@@ -73,12 +73,19 @@ export async function generatePptx(slideData, filename = "Apresentacao-Eduka") {
     ],
   });
 
-  const totalSlides = slideData.length;
+  // Normalise fields: map AI output (bullets/speakerNotes) to expected (content/notes)
+  const normalisedData = slideData.map((slide) => ({
+    ...slide,
+    content: slide.content || slide.bullets || [],
+    notes: slide.notes || slide.speakerNotes || "",
+  }));
+
+  const totalSlides = normalisedData.length;
   let slideNumber = 1;
 
   // Processar cada slide
   for (let i = 0; i < totalSlides; i++) {
-    const slide = slideData[i];
+    const slide = normalisedData[i];
     const isFirst = i === 0;
     const isLast = i === totalSlides - 1;
     

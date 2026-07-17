@@ -71,7 +71,7 @@ export default function SlidesPage() {
           </Link>
           <div className="title-wrapper">
             <span className="tool-icon gradient-text">📊</span>
-            <h1>Gerador de Slides</h1>
+            <h1>Gerador de <span className="shader-text shader-red">Slides</span></h1>
           </div>
           <p>Transforma um tema numa apresentação clara, bem estruturada e pronta a exportar para PowerPoint.</p>
         </div>
@@ -205,12 +205,12 @@ export default function SlidesPage() {
                   {generatedSlides.map((slide, index) => (
                     <div key={index} className="slide-card">
                       <div className="slide-number">Slide {index + 1}</div>
-                      <div className="slide-meta">{slide.layout || "visual"}</div>
+                      <div className="slide-meta">{slide.visual?.type || slide.layout || "visual"}</div>
                       <h4 className="slide-title">{slide.title}</h4>
-                      {slide.subtitle && <h5 className="slide-subtitle">{slide.subtitle}</h5>}
-                      {slide.content && (
+                      {slide.keyMessage && <h5 className="slide-subtitle">{slide.keyMessage}</h5>}
+                      {(slide.bullets || slide.content) && (
                         <ul className="slide-bullets">
-                          {slide.content.map((point, i) => (
+                          {(slide.bullets || slide.content || []).map((point, i) => (
                             <li key={i}>{point}</li>
                           ))}
                         </ul>
@@ -221,10 +221,10 @@ export default function SlidesPage() {
                           <span>{slide.visual.caption || slide.visual.prompt}</span>
                         </div>
                       )}
-                      {slide.realExample && (
+                      {slide.evidence && (
                         <div className="example-box">
-                          <strong>{slide.realExample.label}</strong>
-                          <span>{slide.realExample.takeaway}</span>
+                          <strong>{slide.evidence.type}: {slide.evidence.source}</strong>
+                          <span>{slide.evidence.text}</span>
                         </div>
                       )}
                     </div>

@@ -101,7 +101,7 @@ export default function TrabalhoPage() {
             </Link>
             <h1>
               📝 Gerador de{" "}
-              <span className="gradient-text">Trabalhos</span>
+              <span className="shader-text shader-red">Trabalhos</span>
             </h1>
             <p>
               Insere o tema e os detalhes. A IA gera um trabalho académico

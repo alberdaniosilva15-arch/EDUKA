@@ -67,7 +67,7 @@ export async function POST(request) {
       topic: sanitizeInput(raw.topic),
       numSlides: raw.numSlides,
       style: sanitizeInput(raw.style),
-      model: raw.model || "meta-llama/llama-3.3-70b-instruct:free",
+      model: raw.model || "nvidia/nemotron-3-ultra-550b-a55b:free",
     };
     const { valid, data, error: validationError } = validateSchema(slidesSchema, sanitized);
     if (!valid) return validationError;
@@ -127,48 +127,9 @@ export async function POST(request) {
     const quality = evaluateSlidesQuality(jsonContent);
     const scores = scoreSlides(jsonContent);
 
-    // 8. Pós-processamento seletivo
+    // 8. Pós-processamento seletivo (Removido para máxima velocidade de resposta)
     let postProcessed = false;
     let secondCallLatency = 0;
-    let repairStart = Date.now();
-
-    if (!quality.passed && quality.score >= 5 && quality.issues.length > 0) {
-      // Reparável: segunda chamada para corrigir campos específicos
-      console.log("[Slides] Reparando:", { issues: quality.issues.length, score: quality.score });
-      repairStart = Date.now();
-      try {
-        const repaired = await repairWithSecondCall(jsonContent, quality.issues, data, provider);
-        if (Array.isArray(repaired) && repaired.length === data.numSlides) {
-          jsonContent = repaired;
-          postProcessed = true;
-          secondCallLatency = Date.now() - repairStart;
-        }
-      } catch (repairErr) {
-        console.warn("[Slides] Repair failed, using original:", repairErr.message);
-      }
-    } else if (!quality.passed && quality.score < 5) {
-      // Demasiado mau: regenerar completamente
-      console.log("[Slides] Regenerando:", { score: quality.score });
-      try {
-        const result2 = await generateContent(prompt, {
-          provider,
-          model: data.model,
-          capability: "json",
-          system: "Responde APENAS com JSON válido. Nada antes, nada depois.",
-          temperature: 0.6, // ligeiramente mais alto na 2ª tentativa
-          maxTokens: 8192,
-        });
-        const repaired = parseSlidesJson(result2.text);
-        const schemaResult2 = slidesOutputSchema.safeParse(repaired);
-        if (schemaResult2.success) {
-          jsonContent = repaired.slice(0, data.numSlides);
-          postProcessed = true;
-          secondCallLatency = Date.now() - repairStart;
-        }
-      } catch (regenErr) {
-        console.warn("[Slides] Regen failed, using original:", regenErr.message);
-      }
-    }
 
     // Reavaliar após pós-processamento
     const finalScores = scoreSlides(jsonContent);

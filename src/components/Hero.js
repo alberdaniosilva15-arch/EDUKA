@@ -103,7 +103,7 @@ export default function Hero() {
         <div className="hero-left hero-liquid-glass-ui">
           <div ref={badgeRef} className="hero-badge ios-glass-badge">
             <span className="dot"></span>
-            Plataforma com IA — 100% Angola
+            &quot;A imaginação é mais importante que o conhecimento.&quot; — Einstein
           </div>
 
           <div className="hero-liquid-text">

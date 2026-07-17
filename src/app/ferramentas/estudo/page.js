@@ -27,7 +27,7 @@ export default function EstudoPage() {
       const res = await fetch("/api/estudo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, timeframe, course, difficulty, model: "gemini" }),
+        body: JSON.stringify({ topic, timeframe, course, difficulty, model: "llama-3.3-70b-versatile" }),
       });
 
       if (!res.ok) {

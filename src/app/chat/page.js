@@ -49,8 +49,16 @@ export default function ChatPage() {
     try {
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
       if (Array.isArray(stored)) {
-        setConversations(stored);
-        setActiveId(stored[0]?.id || null);
+        // Migration: strip base64 data de entradas antigas (limita localStorage a ~5MB)
+        const migrated = stored.map((conv) => ({
+          ...conv,
+          messages: conv.messages.map((msg) => ({
+            ...msg,
+            files: msg.files?.map((f) => ({ name: f.name, type: f.type })) || undefined,
+          })),
+        }));
+        setConversations(migrated);
+        setActiveId(migrated[0]?.id || null);
       }
     } catch {
       setConversations([]);
@@ -58,7 +66,15 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations.slice(0, 25)));
+    // Strip base64 data antes de guardar — so metadata (name, type) e necessaria
+    const stripped = conversations.slice(0, 25).map((conv) => ({
+      ...conv,
+      messages: conv.messages.map((msg) => ({
+        ...msg,
+        files: msg.files?.map((f) => ({ name: f.name, type: f.type })) || undefined,
+      })),
+    }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stripped));
   }, [conversations]);
 
   useEffect(() => {
@@ -296,13 +312,15 @@ export default function ChatPage() {
                           <div key={fi} className="message-file-preview">
                             {file.type === "application/pdf" ? (
                               <span className="file-badge">📄 PDF: {file.name}</span>
-                            ) : (
+                            ) : file.data ? (
                               <img
                                 src={file.data}
                                 alt={file.name}
                                 className="message-image"
                                 style={{ maxWidth: "300px", maxHeight: "200px", borderRadius: "8px", marginBottom: "8px" }}
                               />
+                            ) : (
+                              <span className="file-badge">🖼️ {file.name}</span>
                             )}
                           </div>
                         ))}

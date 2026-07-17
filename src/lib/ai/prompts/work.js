@@ -2,7 +2,8 @@
  * Eduka — Work (Trabalho Académico) Prompts
  * Novo contrato com tese, argumentos, evidências, limitações e rubrica.
  */
-import { WORK_SYSTEM } from "../systems/work";
+// NOTE: WORK_SYSTEM é passado via option 'system' em generateContent.
+// NÃO incluir no texto do prompt para evitar duplicação.
 
 /**
  * Rubrica de avaliação automática (0-2 por critério).
@@ -71,12 +72,12 @@ Angola é um país africano que tem petróleo. O petróleo é muito importante p
 /**
  * Constrói o prompt completo para geração de trabalhos académicos.
  */
-export function buildWorkPrompt({ tema, curso, nivel, paginas, requisitos }) {
+export function buildWorkPrompt({ tema, curso, nivel, paginas, requisitos, nomes_alunos, turma, professor, disciplina, escola, tipo_trabalho }) {
+  const isEscolar = tipo_trabalho === 'escolar';
+  
   return `
-${WORK_SYSTEM}
-
 ## TAREFA
-Gera um trabalho académico completo sobre o tema indicado.
+Gera um trabalho ${isEscolar ? 'escolar' : 'académico'} completo sobre o tema indicado.
 
 ## DADOS DO PEDIDO
 - Tema: ${tema}
@@ -84,9 +85,68 @@ Gera um trabalho académico completo sobre o tema indicado.
 - Nível: ${nivel || "Universitário"}
 - Tamanho estimado: ${paginas || "5-8"} páginas
 - Requisitos adicionais: ${requisitos || "Nenhum"}
+- Tipo de trabalho: ${tipo_trabalho || "universitario"}
+
+${isEscolar ? `## DADOS ESCOLARES (OBRIGATÓRIOS NA CAPA)
+- Nome(s) do(s) aluno(s): ${nomes_alunos || "NÃO ESPECIFICADO"}
+- Turma: ${turma || "NÃO ESPECIFICADO"}
+- Professor(a): ${professor || "NÃO ESPECIFICADO"}
+- Disciplina: ${disciplina || "NÃO ESPECIFICADO"}
+- Escola: ${escola || "NÃO ESPECIFICADO"}` : ''}
 
 ## CONTRATO DE SAÍDA
-${WORK_CONTRACT}
+
+${isEscolar ? `
+### Estrutura para TRABALHO ESCOLAR (6 partes):
+
+1. **CAPA** — Identificação do trabalho:
+   - Nome da escola (topo)
+   - Nomes dos alunos (ou nome do aluno se individual)
+   - Título do trabalho
+   - Nome do professor e disciplina
+   - Data de entrega
+
+2. **SUMÁRIO** — Estrutura do trabalho com indicação das partes:
+   - Introdução.............página X
+   - Desenvolvimento........página X
+   - Conclusão..............página X
+   - Bibliografia...........página X
+   (NOTA: não imprimir número na folha de sumário)
+
+3. **INTRODUÇÃO** — Texto curto que:
+   - Indica o assunto abordado
+   - Explica o objectivo do trabalho
+   (Escrever DEPOIS de finalizar o trabalho)
+
+4. **DESENVOLVIMENTO** — O trabalho em si:
+   - Dividido em tópicos/subtítulos lógicos
+   - Texto coeso, coerente, sem erros de português
+   - Sem cópias — escrever com as próprias palavras
+   - Incluir exemplos e dados concretos
+
+5. **CONCLUSÃO** — Resultado final:
+   - Retomar ideias principais
+   - Indicar se o objectivo foi alcançado
+   - Sugerir outras pesquisas possíveis
+
+6. **BIBLIOGRAFIA** — Fontes consultadas em ordem alfabética:
+   - Formato: SOBRENOME, Nome. Título. Edição. Cidade: Editora, data.
+   - Exemplo: BOSI, Alfredo. História Concisa da Literatura Brasileira. 38. ed. São Paulo: Cultrix, 1994.
+` : `
+### Estrutura para TRABALHO UNIVERSITÁRIO:
+
+1. **Título** — específico e informativo.
+2. **Pergunta central** — a questão que o trabalho responde.
+3. **Tese** — afirmação argumentativa clara (1-2 frases).
+4. **Introdução** — contexto, objectivo, método e estrutura do trabalho.
+5. **Desenvolvimento** — dividido em 2-4 subcapítulos, cada um com:
+   - Argumento central
+   - Evidências (dados, exemplos, estudos)
+   - Conexão com a tese
+6. **Contraponto ou limitações** — pelo menos uma secção que discuta perspectivas alternativas ou limites.
+7. **Conclusão** — retoma a tese, sintetiza achados, sugere implicações.
+8. **Referências** — lista de fontes credíveis.
+`}
 
 ## RUBRICA
 ${WORK_RUBRIC}
@@ -96,10 +156,10 @@ ${WORK_FEW_SHOT}
 
 ## INSTRUÇÕES FINAIS
 - Produz o trabalho completo em Markdown.
-- Estrutura: Capa → Índice → Introdução → Desenvolvimento → Contraponto → Conclusão → Referências.
 - Referências: apenas fontes credíveis. NUNCA inventar DOI, autor ou data.
 - Se não tiveres certeza sobre um dado, marca como "[a confirmar]".
 - Inclui pelo menos 2 exemplos ou estudos de caso relevantes a Angola/África lusófona.
 - Não uses emojis. Não uses blocos de código.
+- ${isEscolar ? 'APENAS 1 autor por referência (regras escolares).' : 'Inclui referências de fontes académicas e científicas.'}
 `.trim();
 }

@@ -56,6 +56,13 @@ const tools = [
     href: "/ferramentas/slides",
     available: true,
   },
+  {
+    icon: "📋",
+    title: "Gerador de Curriculo",
+    description: "Responde a perguntas sobre o teu perfil e a IA gera um curriculo profissional adaptado a vaga que procuras.",
+    href: "/ferramentas/curriculo",
+    available: true,
+  },
 ];
 
 export const metadata = {
@@ -67,14 +74,15 @@ export default function FerramentasPage() {
   return (
     <>
       <Navbar />
-      <div className="tool-page">
-        <div className="container">
+
+      <div className="tool-page" style={{ position: "relative", zIndex: 1 }}>
+        <div className="container" style={{ position: "relative", zIndex: 2 }}>
           <div className="tool-header animate-fade-in-up">
             <span className="badge badge-blue" style={{ marginBottom: "var(--space-4)", display: "inline-block" }}>
               🤖 Powered by IA
             </span>
             <h1>
-              As tuas <span className="gradient-text">ferramentas</span>
+              As tuas <span className="shader-yellow">ferramentas</span>
             </h1>
             <p>
               Escolhe a ferramenta que precisas. Cada uma e alimentada por um
@@ -83,27 +91,38 @@ export default function FerramentasPage() {
           </div>
 
           <div className="tools-grid">
-            {tools.map((tool, i) => (
-              <Link
-                key={i}
-                href={tool.href}
-                className={`tool-card glass-card animate-fade-in-up delay-${i + 1} ${
-                  !tool.available ? "tool-card-disabled" : ""
-                }`}
-                id={`tool-${tool.title.toLowerCase().replace(/\s/g, "-")}`}
-              >
-                <div className="tool-card-icon">{tool.icon}</div>
-                <h3>{tool.title}</h3>
-                <p>{tool.description}</p>
-                {tool.available ? (
-                  <span className="tool-card-arrow">
-                    Usar ferramenta <span>→</span>
-                  </span>
-                ) : (
-                  <span className="badge badge-gold">Em breve</span>
-                )}
-              </Link>
-            ))}
+            {tools.map((tool, i) => {
+              let shaderClass = "";
+              if (tool.title === "Chat Eduka") {
+                shaderClass = "shader-red";
+              } else if (tool.title === "Gerador de Trabalhos") {
+                shaderClass = "shader-yellow";
+              } else if (tool.title === "Melhorador de Texto") {
+                shaderClass = "shader-black";
+              }
+
+              return (
+                <Link
+                  key={i}
+                  href={tool.href}
+                  className={`tool-card glass-card animate-fade-in-up delay-${i + 1} ${
+                    !tool.available ? "tool-card-disabled" : ""
+                  }`}
+                  id={`tool-${tool.title.toLowerCase().replace(/\s/g, "-")}`}
+                >
+                  <div className={`tool-card-icon ${shaderClass}`}>{tool.icon}</div>
+                  <h3 className={shaderClass}>{tool.title}</h3>
+                  <p>{tool.description}</p>
+                  {tool.available ? (
+                    <span className="tool-card-arrow">
+                      Usar ferramenta <span>→</span>
+                    </span>
+                  ) : (
+                    <span className="badge badge-gold">Em breve</span>
+                  )}
+                </Link>
+              );
+            })}
           </div>
         </div>
       </div>
