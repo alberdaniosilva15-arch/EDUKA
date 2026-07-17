@@ -55,14 +55,23 @@ async function checkUserRateLimit(userId, route) {
     .single();
 
   if (rpcError) {
-    console.error("[RateLimit] RPC increment_rate_limit FALHOU — rate limit FAIL-CLOSED:", rpcError.message);
-    // Fallback: agora em vez de permitir, bloqueamos se a infraestrutura falhar 
-    // para evitar abuso caso a migration não esteja aplicada.
+    console.error(
+      "[RateLimit] RPC increment_rate_limit falhou; operação bloqueada:",
+      {
+        code: rpcError.code,
+        message: rpcError.message,
+        userId: userId,
+        cost,
+      }
+    );
+
     return {
       allowed: false,
-      creditsUsed: cost,
-      creditsRemaining: 0,
-      resetIn: RL_WINDOW_MS,
+      reason: "rate_limit_unavailable",
+      retryable: true,
+      creditsUsed: null,
+      creditsRemaining: null,
+      resetIn: null,
       cost,
     };
   }
@@ -103,6 +112,27 @@ export async function authenticateAndRateLimit(request) {
   // Rate limit com custo ponderado
   const rl = await checkUserRateLimit(user.id, route);
   if (!rl.allowed) {
+    if (rl.reason === "rate_limit_unavailable") {
+      return {
+        user,
+        supabase,
+        error: NextResponse.json(
+          {
+            error: "Serviço temporariamente indisponível.",
+            code: "RATE_LIMIT_UNAVAILABLE",
+          },
+          {
+            status: 503,
+            headers: {
+              "Retry-After": "2",
+              "Cache-Control": "no-store",
+            },
+          }
+        ),
+        rateLimit: rl,
+      };
+    }
+
     const minutes = Math.ceil(rl.resetIn / 60000);
     return {
       user,
@@ -110,6 +140,7 @@ export async function authenticateAndRateLimit(request) {
       error: NextResponse.json(
         {
           error: `Limite de ${RL_MAX_CREDITS} créditos/hora excedido. Tenta novamente em ${minutes} minutos.`,
+          code: "RATE_LIMIT_EXCEEDED",
           rateLimit: {
             creditsUsed: rl.creditsUsed,
             creditsRemaining: 0,
@@ -120,10 +151,11 @@ export async function authenticateAndRateLimit(request) {
         {
           status: 429,
           headers: {
-            "Retry-After": String(Math.ceil(rl.resetIn / 1000)),
+            "Retry-After": String(Math.max(1, Math.ceil(rl.resetIn / 1000))),
             "X-RateLimit-Limit": String(RL_MAX_CREDITS),
             "X-RateLimit-Remaining": "0",
             "X-RateLimit-Reset": String(Math.ceil((Date.now() + rl.resetIn) / 1000)),
+            "Cache-Control": "no-store",
           },
         }
       ),
