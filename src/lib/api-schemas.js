@@ -3,7 +3,7 @@
  * Validação de input por rota: tipo + tamanho + formato
  */
 import { z } from 'zod';
-import { DEFAULT_GROQ_CHAT_MODEL, GROQ_FREE_MODEL_IDS } from '@/lib/groq-models';
+import { DEFAULT_GROQ_CHAT_MODEL } from '@/lib/groq-models';
 
 // Limites globais de payload (proteção contra custo)
 const MAX_THEME = 5000;
@@ -182,7 +182,7 @@ export const chatSchema = z.object({
     .default(DEFAULT_GROQ_CHAT_MODEL),
   messages: z
     .array(z.object({
-      role: z.enum(['user', 'assistant']),
+      role: z.enum(['user', 'assistant', 'system']),
       content: z
         .string({ required_error: "Mensagem obrigatória." })
         .min(1, "Mensagem vazia.")

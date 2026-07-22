@@ -96,24 +96,9 @@ const nextConfig = {
     ];
   },
 
-  // Redirect HTTP to HTTPS in production only
-  async redirects() {
-    if (isDev) return [];
-    return [
-      {
-        source: '/:path*',
-        has: [
-          {
-            type: 'header',
-            key: 'x-forwarded-proto',
-            value: 'http',
-          },
-        ],
-        destination: 'https://eduka.ao/:path*',
-        permanent: true,
-      },
-    ];
-  },
+  // NOTA: Redirect HTTP→HTTPS removido intencionalmente.
+  // Vercel força HTTPS automaticamente + HSTS + upgrade-insecure-requests na CSP.
+  // O redirect manual causava risco de loop atrás de proxy (x-forwarded-proto).
 
   webpack: (config, { isServer, webpack }) => {
     if (!isServer) {

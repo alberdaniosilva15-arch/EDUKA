@@ -154,16 +154,9 @@ export async function middleware(request) {
         return NextResponse.redirect(loginUrl);
       }
     } else {
-      // Mesmo para rotas não protegidas, refrescar sessão Supabase se existir cookie
-      const hasSupabaseCookie = request.cookies.getAll().some(c => c.name.startsWith("sb-"));
-      if (hasSupabaseCookie) {
-        try {
-          const { response: updatedResponse } = await getSupabaseUser(request, response);
-          response = updatedResponse;
-        } catch {
-          // Ignorar — não é crítico para rotas públicas
-        }
-      }
+      // Rotas públicas: não chamar getSupabaseUser().
+      // A sessão Supabase é refrescada nos Server Components via createClient().
+      // Chamar getUser() aqui adicionaria latência de rede desnecessária em cada request.
     }
 
     // 5. Bloquear logout via GET

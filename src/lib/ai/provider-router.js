@@ -210,11 +210,11 @@ export async function callVision(messages, images, options = {}) {
             const { mimeType, data } = img.inlineData;
             if (mimeType?.startsWith("image/")) {
               content.push({ type: "image_url", image_url: { url: `data:${mimeType};base64,${data}` } });
+            } else if (mimeType === "application/pdf") {
+              // PDFs não são suportados por OpenRouter free vision.
+              // O chat/route.js já trata isso com fallback de descrição genérica.
+              console.warn("[Vision] PDF em inlineData ignorado — OpenRouter vision não aceita PDF. Cairá no fallback.");
             }
-            // PDFs em inlineData são intencionalmente ignorados aqui;
-            // OpenRouter free vision não aceita PDF nativamente e a análise
-            // completa de PDF já existe em /api/pdf.
-            // Cai no fallback de descrição genérica no chat/route.js.
           }
         }
       }
