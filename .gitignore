@@ -56,3 +56,12 @@ build*.log
 check-db.js
 test-*.js
 *.pptx
+
+# Scripts e ficheiros adicionais de deploy / debug / config
+.val
+*.bat
+*deploy*.mjs
+force_env*.mjs
+codigos_ferramentas.txt
+git_*.txt
+*.err.log

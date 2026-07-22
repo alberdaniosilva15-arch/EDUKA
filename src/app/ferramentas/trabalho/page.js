@@ -46,6 +46,7 @@ export default function TrabalhoPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
     setError("");
     setResult("");
@@ -207,8 +208,10 @@ export default function TrabalhoPage() {
                   type="submit"
                   className="btn btn-primary btn-lg"
                   id="submit-trabalho"
+                  disabled={loading}
+                  aria-busy={loading}
                 >
-                  🚀 Gerar Trabalho
+                  {loading ? "A processar..." : "🚀 Gerar Trabalho"}
                 </button>
               </form>
             </div>

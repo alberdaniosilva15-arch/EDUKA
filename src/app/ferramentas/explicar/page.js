@@ -20,6 +20,7 @@ export default function ExplicarPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
     setError("");
     setResult("");
@@ -131,8 +132,10 @@ export default function ExplicarPage() {
                   type="submit"
                   className="btn btn-primary btn-lg"
                   id="submit-explicar"
+                  disabled={loading}
+                  aria-busy={loading}
                 >
-                  💡 Explicar Agora
+                  {loading ? "A processar..." : "💡 Explicar Agora"}
                 </button>
               </form>
             </div>

@@ -68,7 +68,7 @@ Gera um currículo profissional completo e bem formatado.
 - LinkedIn: [link]
 
 ## Objetivo Profissional
-[2-3 frases a descrever o perfil e o que procura]
+[Resume o perfil e o que procura]
 
 ## Formação Académica
 **[Curso]** — [Instituição]
@@ -150,7 +150,7 @@ export async function POST(request) {
   } catch (error) {
     console.error("[API /curriculo] Erro:", error);
     return NextResponse.json(
-      { error: error.message || "Erro ao gerar currículo." },
+      { error: "Erro ao gerar currículo." },
       { status: 500 }
     );
   }

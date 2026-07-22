@@ -41,6 +41,8 @@ export default function Features() {
 
   useEffect(() => {
     const cards = cardsRef.current.filter(Boolean);
+    // Skip 3D tilt on mobile — no mousemove, causes jank on touch
+    if (window.innerWidth < 768) return;
 
     const handleMouseMove = (e, card) => {
       const rect = card.getBoundingClientRect();
@@ -86,8 +88,7 @@ export default function Features() {
       <div className="features-glow-2"></div>
       <div className="container">
         <h2 className="section-title reveal-on-scroll" style={{ textAlign: 'left' }}>
-          Ferramentas que te fazem{" "}
-          <span className="gradient-text">ir mais longe</span>
+          <span className="liquid-metal-glass">Ferramentas que te fazem ir mais longe</span>
         </h2>
         <p className="section-subtitle reveal-on-scroll" data-delay="100" style={{ textAlign: 'left', margin: '0 0 var(--space-12) 0', maxWidth: '520px' }}>
           Cada ferramenta é alimentada por agentes de IA especializados,

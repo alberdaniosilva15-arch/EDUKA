@@ -38,7 +38,9 @@ export default function Testimonials() {
   return (
     <section className="testimonials reveal-on-scroll" id="depoimentos">
       <div className="container">
-        <h2 className="section-title">O que dizem os <span className="gradient-text">estudantes</span></h2>
+        <h2 className="section-title">
+          <span className="liquid-metal-glass">O que dizem os estudantes</span>
+        </h2>
         <p className="section-subtitle">Junta-te a milhares de universitários que já usam o Eduka para acelerar a sua aprendizagem.</p>
 
         <div

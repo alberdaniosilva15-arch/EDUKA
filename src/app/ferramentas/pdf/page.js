@@ -2,17 +2,10 @@
 
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ExportMenu from "@/components/ExportMenu";
 import { markdownToHtml, sanitizeHtml } from "@/lib/utils";
-
-// Importacao dinamica do pdf-parser (so funciona no browser)
-const PdfParser = dynamic(
-  () => import("@/lib/pdf-parser"),
-  { ssr: false }
-);
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ["application/pdf"];
@@ -58,7 +51,8 @@ export default function PdfStudyPage() {
     setProgress("A extrair texto dos PDFs...");
 
     try {
-      const parser = await PdfParser;
+      // Carregar pdf-parser dinamicamente (so executa no browser)
+      const { extractPdfTextFromFile, pdfFileToImages } = await import("@/lib/pdf-parser");
       let allText = "";
       let allImages = [];
       const fileNames = [];
@@ -68,12 +62,12 @@ export default function PdfStudyPage() {
         setProgress(`A processar: ${file.name}...`);
 
         // Extrair texto
-        const { text, pages } = await parser.extractPdfTextFromFile(file);
+        const { text, pages } = await extractPdfTextFromFile(file);
         allText += `--- ${file.name} (${pages} paginas) ---\n\n${text}\n\n`;
 
         // Se modo vision, converter para imagens
         if (mode === "vision") {
-          const images = await parser.pdfFileToImages(file, 10);
+          const images = await pdfFileToImages(file, 10);
           allImages.push(...images);
         }
       }

@@ -46,8 +46,13 @@ export default function Navbar() {
 
   async function handleLogout() {
     const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/auth/logout"); // Redirige pela rota API para limpar cookies server-side
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("[Logout] Falha ao encerrar sessão:", error.message);
+      return;
+    }
+    router.replace("/");
+    router.refresh();
   }
 
   return (
@@ -84,9 +89,21 @@ export default function Navbar() {
                   Sair
                 </button>
               ) : (
-                <Link href="/registar" className="btn btn-primary" id="cta-navbar">
-                  Começar grátis
-                </Link>
+                <div className="cat-cta-wrapper">
+                  <div className="cat-arm" aria-hidden="true">
+                    <div className="cat-forearm">
+                      <div className="cat-paw-pads" />
+                    </div>
+                  </div>
+                
+                  <Link
+                    href="/registar"
+                    className="btn liquid-metal-btn"
+                    id="cta-navbar"
+                  >
+                    Começar grátis
+                  </Link>
+                </div>
               )}
             </>
           )}
@@ -120,9 +137,21 @@ export default function Navbar() {
                   </button>
                 </>
               ) : (
-                <Link href="/registar" className="btn btn-primary" onClick={() => setMobileOpen(false)}>
-                  Começar grátis
-                </Link>
+                <div className="cat-cta-wrapper">
+                  <div className="cat-arm" aria-hidden="true">
+                    <div className="cat-forearm">
+                      <div className="cat-paw-pads" />
+                    </div>
+                  </div>
+                
+                  <Link
+                    href="/registar"
+                    className="btn liquid-metal-btn"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    Começar grátis
+                  </Link>
+                </div>
               )}
             </div>
           </div>

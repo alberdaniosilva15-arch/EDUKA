@@ -1,0 +1,55 @@
+﻿   Ôû▓ Next.js 15.5.20
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ Ô£ô Compiled successfully in 24.3s
+   Skipping linting
+   Checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/29) ...
+   Generating static pages (7/29) 
+   Generating static pages (14/29) 
+   Generating static pages (21/29) 
+ Ô£ô Generating static pages (29/29)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+Ôöî Ôùï /                                    11.7 kB         233 kB
+Ôö£ Ôùï /_not-found                            998 B         104 kB
+Ôö£ ãÆ /api/chat                              170 B         103 kB
+Ôö£ ãÆ /api/chat/conversations                170 B         103 kB
+Ôö£ ãÆ /api/chat/conversations/[id]           170 B         103 kB
+Ôö£ ãÆ /api/chat/stream                       170 B         103 kB
+Ôö£ ãÆ /api/curriculo                         170 B         103 kB
+Ôö£ ãÆ /api/estudo                            170 B         103 kB
+Ôö£ ãÆ /api/explain                           170 B         103 kB
+Ôö£ ãÆ /api/generate                          170 B         103 kB
+Ôö£ ãÆ /api/generate/stream                   170 B         103 kB
+Ôö£ ãÆ /api/improve                           170 B         103 kB
+Ôö£ ãÆ /api/pdf                               170 B         103 kB
+Ôö£ ãÆ /api/slides                            170 B         103 kB
+Ôö£ ãÆ /auth/callback                         170 B         103 kB
+Ôö£ ãÆ /auth/logout                           170 B         103 kB
+Ôö£ Ôùï /chat                                5.75 kB         114 kB
+Ôö£ Ôùï /ferramentas                           193 B         177 kB
+Ôö£ Ôùï /ferramentas/curriculo               4.03 kB         181 kB
+Ôö£ Ôùï /ferramentas/estudo                  2.41 kB         207 kB
+Ôö£ Ôùï /ferramentas/explicar                1.77 kB         206 kB
+Ôö£ Ôùï /ferramentas/melhorar                1.72 kB         206 kB
+Ôö£ Ôùï /ferramentas/pdf                     4.62 kB         209 kB
+Ôö£ Ôùï /ferramentas/slides                  7.45 kB         184 kB
+Ôö£ Ôùï /ferramentas/trabalho                2.24 kB         207 kB
+Ôö£ Ôùï /login                               2.77 kB         180 kB
+Ôöö Ôùï /registar                            3.05 kB         180 kB
++ First Load JS shared by all             103 kB
+  Ôö£ chunks/1255-d90f22433f14e976.js      46.2 kB
+  Ôö£ chunks/4bd1b696-f785427dddbba9fb.js  54.2 kB
+  Ôöö other shared chunks (total)          2.31 kB
+
+
+ãÆ Middleware                             91.3 kB
+
+Ôùï  (Static)   prerendered as static content
+ãÆ  (Dynamic)  server-rendered on demand
+

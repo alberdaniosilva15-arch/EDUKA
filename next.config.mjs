@@ -24,8 +24,8 @@ const securityHeaders = [
       "frame-src https://my.spline.design https://prod.spline.design https://viewer.spline.design",
       // Worker: pdf.js web worker (ficheiro local bundled)
       "worker-src 'self' blob:",
-      // Media: local video
-      "media-src 'self' blob:",
+      // Media: local video + Cloudinary
+      "media-src 'self' blob: https://res.cloudinary.com",
       // Objects: none
       "object-src 'none'",
       // Frame ancestors: none (anti-clickjacking)
@@ -96,11 +96,12 @@ const nextConfig = {
     ];
   },
 
-  // Redirect HTTP to HTTPS in production
+  // Redirect HTTP to HTTPS in production only
   async redirects() {
+    if (isDev) return [];
     return [
       {
-        source: '/(.*)',
+        source: '/:path*',
         has: [
           {
             type: 'header',
@@ -108,7 +109,7 @@ const nextConfig = {
             value: 'http',
           },
         ],
-        destination: 'https://:host/:path*',
+        destination: 'https://eduka.ao/:path*',
         permanent: true,
       },
     ];
@@ -157,6 +158,15 @@ const nextConfig = {
 
   // Compression
   compress: true,
+
+  env: {
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    GROQ_API_KEY: process.env.GROQ_API_KEY,
+    OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+    NVIDIA_API_KEY: process.env.NVIDIA_API_KEY,
+    OPENCODE_API_KEY: process.env.OPENCODE_API_KEY,
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY
+  }
 };
 
 export default nextConfig;

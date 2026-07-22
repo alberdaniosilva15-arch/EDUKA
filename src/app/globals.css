@@ -150,6 +150,7 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 html.lenis, html.lenis body {
@@ -1822,6 +1823,117 @@ a {
   .tools-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* ---------- MOBILE: Eliminate wobble / horizontal scroll / jank ---------- */
+@media (max-width: 768px) {
+  /* Prevent horizontal overflow from pseudo-elements */
+  .hero::before,
+  .hero::after {
+    display: none;
+  }
+
+  .hero {
+    overflow: hidden;
+  }
+
+  .hero-content-wrapper {
+    padding: 100px 4% 60px;
+    min-height: 100dvh;
+  }
+
+  /* Prevent features glow overflow */
+  .features {
+    overflow: hidden;
+  }
+
+  .features-glow-1,
+  .features-glow-2 {
+    display: none;
+  }
+
+  /* Touch-friendly interactive elements */
+  .btn,
+  .glass-card,
+  .tool-card,
+  .feature-card,
+  a,
+  button {
+    touch-action: manipulation;
+  }
+
+  /* Prevent pricing horizontal scroll wobble */
+  .pricing {
+    overflow: hidden;
+  }
+
+  /* Smooth transitions on scroll containers */
+  .chat-main,
+  .message-region,
+  .conversation-list {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* Prevent stat box 3D tilt on touch */
+  .stat-box-wrapper {
+    perspective: none;
+  }
+  .stat-box-inner {
+    transform: none !important;
+    will-change: auto;
+  }
+
+  /* Hero orb — prevent ring overflow */
+  .orb-container {
+    width: 280px;
+    height: 280px;
+  }
+  .orb-image-wrapper {
+    width: 220px;
+    height: 220px;
+  }
+  .orb-glow {
+    width: 250px;
+    height: 250px;
+  }
+  .orb-ring.ring-1 { width: 180px; height: 180px; }
+  .orb-ring.ring-2 { width: 220px; height: 220px; }
+  .orb-ring.ring-3 { width: 260px; height: 260px; }
+
+  /* HowItWorks — disable pin on mobile to prevent scroll conflict */
+  .hw-visual-col {
+    position: relative;
+    height: 50vh;
+    min-height: 280px;
+  }
+
+  /* Prevent marquee overflow */
+  .marquee-container {
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-content-wrapper {
+    padding: 90px 4% 40px;
+  }
+
+  .orb-container {
+    width: 220px;
+    height: 220px;
+  }
+  .orb-image-wrapper {
+    width: 170px;
+    height: 170px;
+  }
+  .orb-glow {
+    width: 190px;
+    height: 190px;
+  }
+  .orb-ring.ring-1 { width: 140px; height: 140px; }
+  .orb-ring.ring-2 { width: 170px; height: 170px; }
+  .orb-ring.ring-3 { width: 200px; height: 200px; }
 }
 
 /* ---------- Auth Pages (Liquid Glass Pattern) ---------- */

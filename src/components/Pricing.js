@@ -122,22 +122,39 @@ export default function Pricing() {
           margin-left: 8px;
         }
         .pricing-grid {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: var(--space-8);
-          max-width: 800px;
+          display: flex;
+          overflow-x: auto;
+          gap: var(--space-6);
+          max-width: 100vw;
           margin: 0 auto;
+          padding: var(--space-4) 0;
+          scroll-snap-type: x mandatory;
+          -webkit-overflow-scrolling: touch;
         }
-        @media (min-width: 768px) {
-          .pricing-grid {
-            grid-template-columns: 1fr 1fr;
-          }
+        .pricing-grid::-webkit-scrollbar {
+          display: none;
         }
         .pricing-card {
           padding: var(--space-8);
           position: relative;
           display: flex;
           flex-direction: column;
+          min-width: 85vw;
+          scroll-snap-align: center;
+          flex-shrink: 0;
+        }
+        @media (min-width: 768px) {
+          .pricing-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            overflow-x: visible;
+            padding: 0;
+            gap: var(--space-8);
+            max-width: 800px;
+          }
+          .pricing-card {
+            min-width: auto;
+          }
         }
         .pricing-card.popular {
           transform: scale(1.05);
@@ -150,19 +167,20 @@ export default function Pricing() {
           top: -12px;
           left: 50%;
           transform: translateX(-50%);
-          background: rgba(255, 255, 255, 0.1);
+          background: linear-gradient(135deg, #000000 0%, #cc092f 50%, #ffcb05 100%);
           backdrop-filter: saturate(180%) blur(16px);
           -webkit-backdrop-filter: saturate(180%) blur(16px);
           border: 1px solid var(--glass-border);
-          border-top-color: rgba(255, 255, 255, 0.3);
-          border-left-color: rgba(255, 255, 255, 0.2);
-          color: var(--gold-400);
+          border-top-color: rgba(255, 255, 255, 0.4);
+          border-left-color: rgba(255, 255, 255, 0.3);
+          color: #ffffff;
           font-weight: 800;
           font-size: var(--fs-sm);
           padding: 4px 16px;
           border-radius: var(--radius-full);
           white-space: nowrap;
-          box-shadow: 0 4px 15px rgba(245, 158, 11, 0.15), inset 0 0 10px rgba(255, 255, 255, 0.05);
+          box-shadow: 0 4px 15px rgba(204, 9, 47, 0.4), inset 0 0 10px rgba(255, 255, 255, 0.2);
+          text-shadow: 0 1px 2px rgba(0,0,0,0.5);
         }
         .pricing-card h3 {
           font-size: var(--fs-3xl);

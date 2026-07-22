@@ -14,7 +14,12 @@ export async function GET(request) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
-    if (!error) {
+    if (error) {
+      console.error("[Auth Callback] Falha ao trocar código por sessão:", {
+        message: error.message,
+        status: error.status,
+      });
+    } else {
       // Validar redirect para prevenir Open Redirect
       const safeRedirect = redirect.startsWith('/') && !redirect.startsWith('//')
         ? redirect

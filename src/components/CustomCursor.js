@@ -39,8 +39,12 @@ export default function CustomCursor() {
     const xSet = gsap.quickSetter(followerRef.current, "x", "px");
     const ySet = gsap.quickSetter(followerRef.current, "y", "px");
 
-    // RAF for smooth following
+    // RAF for smooth following — com flag para parar após unmount
+    let rafId;
+    let active = true;
+
     const render = () => {
+      if (!active) return;
       // Lerp logic for the follower circle
       delayedMouse.current.x += (mouse.current.x - delayedMouse.current.x) * 0.15;
       delayedMouse.current.y += (mouse.current.y - delayedMouse.current.y) * 0.15;
@@ -48,11 +52,11 @@ export default function CustomCursor() {
       xSet(delayedMouse.current.x);
       ySet(delayedMouse.current.y);
       
-      requestAnimationFrame(render);
+      rafId = requestAnimationFrame(render);
     };
     
     // Start RAF
-    const rafId = requestAnimationFrame(render);
+    rafId = requestAnimationFrame(render);
 
     const onMouseOver = (e) => {
       const tag = e.target.tagName.toLowerCase();
@@ -81,9 +85,10 @@ export default function CustomCursor() {
     document.addEventListener("mouseover", onMouseOver);
 
     return () => {
+      active = false;
+      cancelAnimationFrame(rafId);
       window.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseover", onMouseOver);
-      cancelAnimationFrame(rafId);
     };
   }, []);
 

@@ -1,11 +1,20 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // Initialize Supabase admin client for backend operations
+const hasAdminConfig = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
 let supabase = null;
-try {
-  supabase = createAdminClient();
-} catch {
-  // Service role key não disponível — funcionalidades de tracking desactivadas
+if (hasAdminConfig) {
+  try {
+    supabase = createAdminClient();
+  } catch (err) {
+    console.warn("[Learning System] Falha ao criar cliente administrativo:", err.message);
+  }
+} else {
+  console.warn("[Learning System] Supabase administrativo não configurado (SUPABASE_SERVICE_ROLE_KEY em falta).");
 }
 
 /**

@@ -55,15 +55,33 @@ async function checkUserRateLimit(userId, route) {
     .single();
 
   if (rpcError) {
-    console.error(
-      "[RateLimit] RPC increment_rate_limit falhou; operação bloqueada:",
-      {
-        code: rpcError.code,
-        message: rpcError.message,
-        userId: userId,
+    const missingRpc =
+      rpcError.code === "42883" ||
+      rpcError.message?.toLowerCase().includes("does not exist");
+
+    console.error("[RateLimit] RPC increment_rate_limit falhou:", {
+      code: rpcError.code,
+      message: rpcError.message,
+      missingRpc,
+      userId,
+      cost,
+    });
+
+    // Fallback controlado: NÃO activar em produção excepto emergência explícita
+    const allowFallback =
+      process.env.NODE_ENV !== "production" ||
+      process.env.RATE_LIMIT_FAIL_OPEN === "true";
+
+    if (missingRpc && allowFallback) {
+      console.warn("[RateLimit] Fallback activo — RPC inexistente, a permitir requisição.");
+      return {
+        allowed: true,
+        creditsUsed: 0,
+        creditsRemaining: RL_MAX_CREDITS,
+        resetIn: RL_WINDOW_MS,
         cost,
-      }
-    );
+      };
+    }
 
     return {
       allowed: false,

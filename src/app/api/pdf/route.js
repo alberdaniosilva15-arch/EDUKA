@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { authenticateAndRateLimit } from "@/lib/api-helpers";
 import { generateContent, callVision } from "@/lib/ai";
 import { buildSystemWithPersona } from "@/lib/ai/systems/base";
+import { z } from "zod";
 
 const PDF_PERSONA = `
 ## Persona: Analista de Documentos
@@ -51,6 +52,21 @@ Responde SEMPRE neste formato:
 - Pergunta 3?
 `.trim();
 
+// Schema de validação para limitar tamanho da entrada
+const pdfRequestSchema = z
+  .object({
+    text: z.string().max(100_000, "Texto demasiado longo (máx 100.000 caracteres).").optional(),
+    images: z
+      .array(z.string().max(8_000_000, "Imagem demasiado grande."))
+      .max(20, "Demasiadas imagens (máx 20).")
+      .optional(),
+    filename: z.string().max(255).optional().default("documento.pdf"),
+  })
+  .refine(
+    (data) => Boolean(data.text?.trim()) || Boolean(data.images?.length),
+    { message: "Envie texto ou pelo menos uma imagem." }
+  );
+
 export async function POST(request) {
   const startTime = Date.now();
 
@@ -58,14 +74,18 @@ export async function POST(request) {
     const { error: authError } = await authenticateAndRateLimit(request);
     if (authError) return authError;
 
-    const { text, images, filename } = await request.json();
+    const rawBody = await request.json();
+    const parsed = pdfRequestSchema.safeParse(rawBody);
 
-    if (!text && (!images || images.length === 0)) {
+    if (!parsed.success) {
+      const firstIssue = parsed.error.issues[0];
       return NextResponse.json(
-        { error: "Nenhum conteudo enviado. Envia um PDF ou insere texto." },
+        { error: firstIssue.message || "Dados de entrada inválidos." },
         { status: 400 }
       );
     }
+
+    const { text, images, filename } = parsed.data;
 
     // Construir prompt
     let prompt = "";

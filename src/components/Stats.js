@@ -102,6 +102,8 @@ function StatBox({ icon, label, target, suffix, trigger, delay, placeholder }) {
   }, [trigger, target, delay]);
 
   const handleMouseMove = (e) => {
+    // Skip 3D tilt on mobile — no mousemove
+    if (window.innerWidth < 768) return;
     if (!cardRef.current || !innerRef.current) return;
     const rect = cardRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;

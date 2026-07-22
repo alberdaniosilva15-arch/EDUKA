@@ -170,10 +170,13 @@ export default function HowItWorks() {
     const section = sectionRef.current;
     if (!section) return;
 
+    // GSAP pinning now enabled for mobile as well
+
+
     const mm = gsap.matchMedia();
 
-    // ── Desktop (> 768px, sem reduced-motion) ───
-    mm.add("(min-width: 768px) and (prefers-reduced-motion: no-preference)", () => {
+    // ── Todos os Ecrãs (sem reduced-motion) ───
+    mm.add("(prefers-reduced-motion: no-preference)", () => {
       const st = ScrollTrigger.create({
         trigger: section,
         start: "top top",
@@ -217,8 +220,8 @@ export default function HowItWorks() {
       };
     });
 
-    // ── Mobile ou prefers-reduced-motion ───
-    mm.add("(max-width: 767px), (prefers-reduced-motion: reduce)", () => {
+    // ── prefers-reduced-motion ───
+    mm.add("(prefers-reduced-motion: reduce)", () => {
       // Desenha um frame estático (meio do vídeo)
       drawFrame(Math.round(FRAME_COUNT / 2));
 
@@ -259,8 +262,8 @@ export default function HowItWorks() {
         {/* ── Coluna Esquerda: Texto + Timeline ── */}
         <div className="hw-text-col">
           <div className="hw-text-inner">
-            <h2 className="section-title">
-              Simples assim. <span className="gradient-text">Em segundos.</span>
+            <h2 className="section-title human-font" style={{ fontStyle: "italic", fontWeight: "500", fontSize: "clamp(2rem, 5vw, 3rem)" }}>
+              Simples assim. <span className="liquid-metal-text">Em segundos.</span>
             </h2>
             <p className="section-subtitle">
               Não precisas de ser um expert em Inteligência Artificial para tirares o máximo proveito do Eduka.
@@ -275,7 +278,11 @@ export default function HowItWorks() {
                   </div>
                   <div className="timeline-content">
                     <div className="step-header">
-                      <span className="step-num">{step.num}</span>
+                      <span className="step-num" style={{
+                        background: i === 0 ? "black" : (i === 1 ? "#ef4444" : "#eab308"),
+                        WebkitBackgroundClip: "text",
+                        WebkitTextFillColor: "transparent"
+                      }}>{step.num}</span>
                       <span className="step-icon">{step.icon}</span>
                     </div>
                     <h3>{step.title}</h3>

@@ -20,6 +20,7 @@ export default function MelhorarPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
     setError("");
     setResult("");
@@ -143,8 +144,10 @@ export default function MelhorarPage() {
                   type="submit"
                   className="btn btn-primary btn-lg"
                   id="submit-melhorar"
+                  disabled={loading}
+                  aria-busy={loading}
                 >
-                  ✨ Melhorar Texto
+                  {loading ? "A processar..." : "✨ Melhorar Texto"}
                 </button>
               </form>
             </div>

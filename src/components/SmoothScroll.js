@@ -12,6 +12,11 @@ export default function SmoothScroll() {
       return
     }
 
+    // No mobile, Lenis cause scroll wobble/jank — skip it entirely
+    if (window.innerWidth < 768) {
+      return
+    }
+
     gsap.registerPlugin(ScrollTrigger)
 
     const lenis = new Lenis({

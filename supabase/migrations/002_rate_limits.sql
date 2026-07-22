@@ -6,7 +6,7 @@ DROP TABLE IF EXISTS public.rate_limits;
 
 CREATE TABLE IF NOT EXISTS rate_limits (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  count INTEGER NOT NULL DEFAULT 0,
+  credits_used INTEGER NOT NULL DEFAULT 0,
   window_start TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

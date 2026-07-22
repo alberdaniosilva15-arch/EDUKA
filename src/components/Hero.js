@@ -20,6 +20,9 @@ export default function Hero() {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     if (mediaQuery.matches) return;
 
+    // On mobile, skip heavy GSAP animations — they cause jank
+    if (window.innerWidth < 768) return;
+
     gsap.registerPlugin(ScrollTrigger);
 
     const tl = gsap.timeline({ defaults: { ease: "power3.out" } });

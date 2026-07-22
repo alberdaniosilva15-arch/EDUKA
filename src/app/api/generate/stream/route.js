@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { authenticateAndRateLimit } from "@/lib/api-helpers";
+import { authenticateAndRateLimit, validateSchema, withRateLimitHeaders } from "@/lib/api-helpers";
 import { generateSchema } from "@/lib/api-schemas";
-import { validateSchema, withRateLimitHeaders } from "@/lib/api-helpers";
 import { buildWorkPrompt } from "@/lib/ai/prompts/work";
 import { generateContentStream } from "@/lib/ai/streaming";
+import { WORK_SYSTEM } from "@/lib/ai/systems/work";
 import { sanitizeInput } from "@/lib/utils";
 
 /**
@@ -38,11 +38,11 @@ export async function POST(request) {
     const prompt = buildWorkPrompt(data);
 
     // 4. Streaming
-    const { stream, fullText } = await generateContentStream(prompt, {
+    const { stream } = await generateContentStream(prompt, {
       provider: "groq",
       model: "llama-3.3-70b-versatile",
       capability: "text",
-      system: "Es um diretor académico da Eduka. Usa pesquisa e exemplos reais quando disponíveis; se não houver certeza, marca como a confirmar.",
+      system: WORK_SYSTEM,
       temperature: 0.62,
       maxTokens: 8192,
     });

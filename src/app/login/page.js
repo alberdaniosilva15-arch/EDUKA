@@ -44,6 +44,11 @@ function LoginContent() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [loginMethod, setLoginMethod] = useState("email"); // "email" ou "phone"
+  const [step, setStep] = useState(1); // 1: inserir dados, 2: inserir OTP (apenas phone)
+  
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -97,45 +102,83 @@ function LoginContent() {
     setLoading(true);
     setError("");
 
-    // Validar password
-    const pwError = validatePassword(password);
-    if (pwError) {
-      setError(pwError);
-      setLoading(false);
-      return;
+    // Validar password se for email
+    if (loginMethod === "email") {
+      const pwError = validatePassword(password);
+      if (pwError) {
+        setError(pwError);
+        setLoading(false);
+        return;
+      }
     }
 
     const supabase = createClient();
 
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    if (loginMethod === "email") {
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (authError) {
-      // Registar tentativa falhada
-      const { count, lockedUntil } = recordFailedAttempt();
-      setAttempts(count);
+      if (authError) {
+        // Registar tentativa falhada
+        const { count, lockedUntil } = recordFailedAttempt();
+        setAttempts(count);
 
-      if (lockedUntil) {
-        setLockoutTime(lockedUntil - Date.now());
-        setError("Demasiadas tentativas. Conta bloqueada por 15 minutos.");
-      } else {
-        const remaining = MAX_ATTEMPTS - count;
-        setError(
-          authError.message === "Invalid login credentials"
-            ? `Email ou palavra-passe incorrectos. (${remaining} tentativas restantes)`
-            : authError.message
-        );
+        if (lockedUntil) {
+          setLockoutTime(lockedUntil - Date.now());
+          setError("Demasiadas tentativas. Conta bloqueada por 15 minutos.");
+        } else {
+          const remaining = MAX_ATTEMPTS - count;
+          setError(
+            authError.message === "Invalid login credentials"
+              ? `Email ou palavra-passe incorrectos. (${remaining} tentativas restantes)`
+              : authError.message
+          );
+        }
+        setLoading(false);
+        return;
       }
-      setLoading(false);
-      return;
-    }
 
-    // Login bem-sucedido — resetar tentativas
-    resetAttempts();
-    router.push(redirectTo);
-    router.refresh();
+      // Login bem-sucedido — resetar tentativas
+      resetAttempts();
+      router.push(redirectTo);
+      router.refresh();
+    } else if (loginMethod === "phone") {
+      if (step === 1) {
+        // Enviar OTP para o telefone
+        const { error: otpError } = await supabase.auth.signInWithOtp({
+          phone: phone,
+        });
+
+        if (otpError) {
+          setError(otpError.message);
+          setLoading(false);
+          return;
+        }
+
+        setStep(2);
+        setLoading(false);
+      } else if (step === 2) {
+        // Verificar OTP
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          phone: phone,
+          token: otp,
+          type: 'sms',
+        });
+
+        if (verifyError) {
+          setError("Código inválido. Tenta novamente.");
+          setLoading(false);
+          return;
+        }
+
+        // Login bem-sucedido — resetar tentativas
+        resetAttempts();
+        router.push(redirectTo);
+        router.refresh();
+      }
+    }
   }
 
   async function handleGoogleLogin() {
@@ -175,57 +218,122 @@ function LoginContent() {
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="auth-form">
-            <div className="form-group">
-              <label htmlFor="login-email">Email</label>
-              <input
-                id="login-email"
-                type="email"
-                placeholder="teu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                disabled={isLocked}
-              />
+          {step === 1 && (
+            <div className="auth-methods-toggle" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', justifyContent: 'center' }}>
+              <button 
+                type="button" 
+                className={`btn ${loginMethod === 'email' ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => { setLoginMethod('email'); setError(""); }}
+                style={{ flex: 1 }}
+              >
+                Email
+              </button>
+              <button 
+                type="button" 
+                className={`btn ${loginMethod === 'phone' ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => { setLoginMethod('phone'); setError(""); }}
+                style={{ flex: 1 }}
+              >
+                Telemóvel
+              </button>
             </div>
+          )}
 
-            <div className="form-group">
-              <label htmlFor="login-password">Palavra-passe</label>
-              <div className="password-input-wrapper">
-                <input
-                  id="login-password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={8}
-                  autoComplete="current-password"
-                  disabled={isLocked}
-                />
-                <button
-                  type="button"
-                  className="password-toggle-btn"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? "Esconder palavra-passe" : "Mostrar palavra-passe"}
-                  tabIndex={-1}
-                >
-                  {showPassword ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                      <line x1="1" y1="1" x2="23" y2="23"/>
-                    </svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                      <circle cx="12" cy="12" r="3"/>
-                    </svg>
-                  )}
-                </button>
-              </div>
-              <small className="password-hint">Mínimo 8 caracteres, 1 maiúscula, 1 número</small>
-            </div>
+          <form onSubmit={handleLogin} className="auth-form">
+            {loginMethod === "email" ? (
+              <>
+                <div className="form-group">
+                  <label htmlFor="login-email">Email</label>
+                  <input
+                    id="login-email"
+                    type="email"
+                    placeholder="teu@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    autoComplete="email"
+                    disabled={isLocked}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="login-password">Palavra-passe</label>
+                  <div className="password-input-wrapper">
+                    <input
+                      id="login-password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={8}
+                      autoComplete="current-password"
+                      disabled={isLocked}
+                    />
+                    <button
+                      type="button"
+                      className="password-toggle-btn"
+                      onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? "Esconder palavra-passe" : "Mostrar palavra-passe"}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                          <line x1="1" y1="1" x2="23" y2="23"/>
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                          <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                  <small className="password-hint">Mínimo 8 caracteres, 1 maiúscula, 1 número</small>
+                </div>
+              </>
+            ) : (
+              <>
+                {step === 1 ? (
+                  <div className="form-group">
+                    <label htmlFor="login-phone">Número de Telemóvel</label>
+                    <input
+                      id="login-phone"
+                      type="tel"
+                      placeholder="+351912345678"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      required
+                      autoComplete="tel"
+                      disabled={isLocked}
+                    />
+                    <small className="password-hint">Inclui o indicativo do país (ex: +351 para Portugal)</small>
+                  </div>
+                ) : (
+                  <div className="form-group">
+                    <label htmlFor="login-otp">Código de Verificação (SMS)</label>
+                    <input
+                      id="login-otp"
+                      type="text"
+                      placeholder="123456"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      required
+                      disabled={isLocked}
+                    />
+                    <small className="password-hint">Insere o código que recebeste por SMS</small>
+                    <button 
+                      type="button" 
+                      onClick={() => setStep(1)} 
+                      style={{ background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', marginTop: '10px', padding: 0 }}
+                    >
+                      Alterar número de telemóvel
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
 
             <button
               type="submit"
@@ -234,9 +342,9 @@ function LoginContent() {
               id="login-submit"
             >
               {loading ? (
-                <span className="auth-spinner">⏳ A entrar...</span>
+                <span className="auth-spinner">⏳ A processar...</span>
               ) : (
-                "Entrar"
+                loginMethod === "phone" && step === 1 ? "Enviar Código por SMS" : "Entrar"
               )}
             </button>
           </form>

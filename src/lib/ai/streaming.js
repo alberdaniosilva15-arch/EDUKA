@@ -14,6 +14,7 @@ export async function generateContentStream(prompt, options = {}) {
     system,
     temperature = 0.7,
     maxTokens = 8192,
+    messages: inputMessages,
   } = options;
 
   const config = getProviderConfig(preferredProvider);
@@ -22,10 +23,23 @@ export async function generateContentStream(prompt, options = {}) {
   const apiKey = process.env[config.envKey];
   if (!apiKey) throw new Error(`${config.envKey} nao configurada`);
 
-  const messages = [
-    ...(system ? [{ role: "system", content: system }] : []),
-    { role: "user", content: prompt },
-  ];
+  // Aceitar messages array OU prompt string
+  let messages;
+  if (Array.isArray(inputMessages)) {
+    // Filtrar system messages duplicadas se system option fornecido
+    const filtered = system
+      ? inputMessages.filter((m) => m.role !== "system")
+      : inputMessages;
+    messages = [
+      ...(system ? [{ role: "system", content: system }] : []),
+      ...filtered,
+    ];
+  } else {
+    messages = [
+      ...(system ? [{ role: "system", content: system }] : []),
+      { role: "user", content: prompt },
+    ];
+  }
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
